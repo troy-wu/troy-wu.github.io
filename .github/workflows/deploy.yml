@@ -1,4 +1,4 @@
-name: Deploy React App to User Site
+name: Deploy React User Site
 
 on:
   push:
@@ -6,28 +6,20 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-
       - run: npm install
-
       - run: npm run build
-
       - name: Copy build to root
         run: |
-          rm -rf * .[^.]*         # careful: this deletes current root files
+          rm -rf * .[^.]*       # deletes root files
           cp -r build/* .
           rm -rf build
-          
       - name: Commit and push
         run: |
           git config user.name "GitHub Actions"
