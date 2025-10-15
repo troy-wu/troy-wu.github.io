@@ -1,32 +1,37 @@
-name: Deploy React App to GitHub Pages
+name: Deploy React App to User Site
 
 on:
   push:
     branches:
-      - main  # deploy only on main branch pushes
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
 
-      - name: Build React app
-        run: npm run build
+      - run: npm run build
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v7
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
-          publish_branch: main  # for user site, deploy to root of main
+      - name: Copy build to root
+        run: |
+          rm -rf * .[^.]*         # careful: this deletes current root files
+          cp -r build/* .
+          rm -rf build
+          
+      - name: Commit and push
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Deploy React build"
+          git push origin main --force
