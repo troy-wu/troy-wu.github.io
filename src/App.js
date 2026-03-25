@@ -52,46 +52,46 @@ const SKILLS = {
 
 const PROJECTS = [
   {
-    title: 'Basketbot',
+    title: 'BasketBot',
     subtitle: 'ProduHacks 2024 Winner',
-    tech: ['Python', 'OpenCV', 'PyAudio', 'VOSK'],
+    tech: ['Python', 'OpenCV', 'TensorFlow', 'PyAudio', 'VOSK'],
     award: '1st Place — $400',
     description:
-      'Object detection automatic basketball scorekeeper with voice-controlled scoreboard and clock using speech recognition.',
+      'Winner of ProduHacks (50 teams) for building an object-detection basketball scorekeeper with TensorFlow net recognition and OpenCV plus voice control via PyAudio/VOSK.',
     image: '/images/projects/basketbot.png',
     gradient: 'from-violet-600/80 to-indigo-600/80',
-    github: 'https://github.com/troy-wu',
+    github: 'https://github.com/04christopher/basketbot',
+  },
+  {
+    title: 'Campus Explorer',
+    subtitle: 'Full-Stack Web Application',
+    tech: ['TypeScript', 'Node.js', 'Express.js', 'JavaScript', 'HTML/CSS', 'Google Maps API'],
+    description:
+      'Built a TypeScript/Express backend and interactive frontend to query and visualize 300+ campus rooms in real time with Google Maps integration.',
+    image: '/images/projects/campusexplorer.png',
+    gradient: 'from-blue-600/80 to-cyan-600/80',
+    github: 'https://github.com/troy-wu/campusexplorer',
+  },
+  {
+    title: 'BattleIQ',
+    subtitle: 'Clash Royale Insights Dashboard',
+    tech: ['Python', 'REST API', 'Data Analysis'],
+    description:
+      'Engineered a Python data pipeline that aggregates and analyzes Clash Royale battle history through a REST API for repeatable performance insights.',
+    image: '/images/projects/battleiq.png',
+    gradient: 'from-fuchsia-600/80 to-violet-600/80',
+    github: 'https://github.com/troy-wu/clashroyale',
   },
   {
     title: 'Mindful Motion',
     subtitle: 'HelloHacks 2023 Winner',
-    tech: ['Python', 'OpenCV', 'Pandas', 'Flask'],
+    tech: ['Python', 'OpenCV', 'Pandas', 'Flask', 'HTML/CSS'],
     award: '1st Place — $500',
     description:
-      'Motion detection rep counter and pose corrector achieving 91% accuracy with computer vision.',
-    image: '/images/projects/mindful-motion.png',
-    gradient: 'from-purple-600/80 to-pink-600/80',
-    github: 'https://github.com/troy-wu',
-  },
-  {
-    title: 'Among Us Database',
-    subtitle: 'Full-Stack Web App',
-    tech: ['SQL', 'OracleDB', 'Node.js', 'Express.js'],
-    description:
-      'Web application tracking multiplayer game events with a 20-table relational database and RESTful API.',
-    image: '/images/projects/among-us-db.png',
-    gradient: 'from-blue-600/80 to-cyan-600/80',
-    github: 'https://github.com/troy-wu',
-  },
-  {
-    title: 'Blackjack Game',
-    subtitle: 'Java Desktop App',
-    tech: ['Java', 'JUnit', 'JSON', 'Java Swing'],
-    description:
-      'Fully functional blackjack game with save/load functionality, GUI, and 100% test coverage.',
-    image: '/images/projects/blackjack.png',
+      'Built a Flask-based motion rep counter and pose-correction tool, achieving 91% motion-detection accuracy with OpenCV and Pandas-based event logging.',
+    image: '/images/projects/mindfulmotion.png',
     gradient: 'from-emerald-600/80 to-teal-600/80',
-    github: 'https://github.com/troy-wu',
+    github: 'https://github.com/troy-wu/team1',
   },
 ];
 
@@ -537,7 +537,7 @@ export default function Portfolio() {
                   ))}
                 </div>
                 <p className="text-slate-600 text-xs mt-2 italic">
-                  Add photos to public/images/about/
+                  {/* Add photos to public/images/about/ */}
                 </p>
               </FadeIn>
             </div>
@@ -692,8 +692,8 @@ export default function Portfolio() {
                       }}
                     />
 
-                    {/* Bottom gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+                    {/* Softer bottom overlay to keep images more visible */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/45 via-slate-900/15 to-transparent" />
 
                     {/* Award badge */}
                     {project.award && (
@@ -737,9 +737,9 @@ export default function Portfolio() {
           </div>
 
           <FadeIn delay={0.4} className="text-center mt-8">
-            <p className="text-slate-600 text-sm italic">
+            {/* <p className="text-slate-600 text-sm italic">
               Add project screenshots to public/images/projects/
-            </p>
+            </p> */}
           </FadeIn>
         </div>
       </section>
