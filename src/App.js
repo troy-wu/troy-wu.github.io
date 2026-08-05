@@ -64,27 +64,43 @@ const NAV_LINKS = [
 ];
 
 const HERO_STATS = [
-  { value: '1M+', label: 'Users impacted' },
+  { value: '$330M+', label: 'Annualized sales enabled' },
+  { value: '80M+', label: 'Products scored' },
   { value: '2×', label: 'Hackathon wins' },
-  { value: '4.10', label: 'GPA / 4.33' },
 ];
 
 const SKILLS = [
   {
     group: 'Languages',
-    items: ['Python', 'Java', 'TypeScript', 'JavaScript', 'C++', 'SQL'],
+    items: ['Python', 'Java', 'C#', 'TypeScript', 'JavaScript', 'C++', 'SQL'],
+  },
+  {
+    group: 'ML & Data',
+    items: ['PyTorch', 'TensorFlow', 'pandas', 'NumPy', 'OpenCV'],
   },
   {
     group: 'Frameworks',
-    items: ['React', 'Node.js', 'Express', 'Flask', 'JUnit', 'Mocha', 'Playwright'],
+    items: ['React', 'Node.js', 'Express', 'Flask', 'JUnit', 'Playwright'],
   },
   {
     group: 'Platforms & Tools',
-    items: ['AWS (Bedrock, Lambda, Polly)', 'Docker', 'MongoDB', 'OracleDB', 'Git', 'GitLab', 'Jira'],
+    items: ['AWS Batch', 'AWS Bedrock', 'Lambda', 'S3', 'Airflow', 'Docker', 'Kubernetes', 'Databricks'],
   },
 ];
 
 const EXPERIENCES = [
+  {
+    role: 'Software Engineer Intern — Robotaxi & Grok Validation',
+    company: 'Tesla',
+    monogram: 'T',
+    location: 'Palo Alto, CA',
+    period: 'Aug 2026 — Dec 2026',
+    blurb:
+      'Incoming software engineer on the Robotaxi and Grok Validation team.',
+    bullets: [],
+    tech: ['Validation Infrastructure', 'Autonomous Systems'],
+    accent: 'incoming',
+  },
   {
     role: 'Software Development Engineer Intern',
     company: 'Amazon',
@@ -92,10 +108,14 @@ const EXPERIENCES = [
     location: 'Vancouver, BC',
     period: 'May 2026 — Aug 2026',
     blurb:
-      'Joining the Applied Sciences team in Amazon Everyday Essentials, working on ML-powered recommendation and discovery experiences serving millions of customers.',
-    bullets: [],
-    tech: ['Applied ML', 'Recommendation Systems'],
-    accent: 'incoming',
+      'Productionized large-scale machine-learning infrastructure as the first engineer embedded in a team of applied scientists.',
+    bullets: [
+      'Built an end-to-end Python ML platform that scores product relationships across 80M+ products, enabling recommendations attributed to $330M+ in annualized sales across North American storefronts.',
+      'Reduced batch inference from four days to eight hours by orchestrating 80+ parallel GPU jobs with Airflow and AWS Batch.',
+      'Added fault-tolerant execution, automatic retries, and shard-level resumability so failed work could recover without restarting full runs.',
+      'Built an S3-backed, hash-partitioned Parquet feature store for 1TB of product embeddings, eliminating a 90-minute fetch bottleneck and reducing per-run data costs from $13 to under $1.',
+    ],
+    tech: ['Python', 'PyTorch', 'Airflow', 'AWS Batch', 'AWS Glue', 'S3'],
   },
   {
     role: 'Software Engineer Intern',
@@ -106,11 +126,11 @@ const EXPERIENCES = [
     blurb:
       'Built full-stack GenAI features for Brightspace, the LMS used by 400+ institutions and powering 260K+ AI generations a year.',
     bullets: [
-      'Shipped the AI Audio Overview feature end-to-end — a serverless pipeline using Claude (AWS Bedrock + Lambda) and Amazon Polly to generate natural narrated summaries of course content.',
-      'Refined prompting strategies across GenAI features, reducing malformed outputs by ~30% and improving consistency across subject areas.',
-      'Expanded Playwright E2E coverage by 28% and cut suite runtime by 32% with shared TestBench fixtures.',
+      'Developed full-stack GenAI features using Web Components, LitElement, C# MVC, and SQL databases.',
+      'Built the AI Audio Overview feature end to end, generating narrated course summaries through Claude Sonnet, AWS Bedrock, Lambda, and Polly.',
+      'Expanded Playwright E2E coverage by 28% and reduced suite runtime by 32% through shared TestBench fixtures.',
     ],
-    tech: ['TypeScript', 'AWS Bedrock', 'Lambda', 'Polly', 'Playwright'],
+    tech: ['TypeScript', 'C#', 'SQL', 'AWS Bedrock', 'Lambda', 'Polly', 'Playwright'],
   },
   {
     role: 'Software Engineer Intern',
@@ -124,7 +144,6 @@ const EXPERIENCES = [
       'Developed Java backend services and a Manifest V3 Chrome extension powering continuous endpoint monitoring and threat detection.',
       'Engineered a Java microservice integrated with AWS Grafana for automated log exports, accelerating error detection by ~30%.',
       'Rebuilt the QA log interface, cutting export latency in half and making the tool usable for non-technical teams.',
-      'Authored JUnit and Mocha test suites reaching 96.8% coverage on production services.',
     ],
     tech: ['Java', 'JavaScript', 'AWS', 'Chrome Extensions', 'JUnit'],
   },
@@ -313,12 +332,11 @@ export default function Portfolio() {
             </FadeIn>
             <FadeIn delay={0.1}>
               <p className="mt-6 text-lg text-slate-300 leading-relaxed max-w-xl">
-                CS &amp; Business student at UBC building software that ships to
-                real users — from GenAI features in an LMS used by{' '}
-                <span className="text-white">400+ institutions</span> to
-                endpoint security across{' '}
-                <span className="text-white">1M+ devices</span>. Incoming SDE
-                Intern at Amazon.
+                CS &amp; Business student at UBC building production ML and
+                GenAI systems — from GPU inference across{' '}
+                <span className="text-white">80M+ products</span> to learning
+                tools used by <span className="text-white">400+ institutions</span>.
+                {' '}Incoming software engineer at Tesla.
               </p>
             </FadeIn>
 
@@ -432,12 +450,12 @@ export default function Portfolio() {
               </FadeIn>
               <FadeIn delay={0.05}>
                 <p>
-                  Across three internships I've shipped GenAI features to a
-                  global LMS, built endpoint-security telemetry for 1M+ devices,
-                  and led test-infrastructure work that measurably sped up team
-                  delivery. This summer I'm joining{' '}
-                  <span className="text-white">Amazon's Applied Sciences</span>{' '}
-                  team to work on ML-driven recommendations.
+                  Across Amazon, D2L, and Absolute Security, I've built
+                  distributed ML infrastructure, shipped GenAI features to a
+                  global LMS, and developed endpoint-security telemetry for
+                  1M+ devices. Next, I'm joining{' '}
+                  <span className="text-white">Tesla's Robotaxi and Grok Validation</span>{' '}
+                  team.
                 </p>
               </FadeIn>
               <FadeIn delay={0.1}>
@@ -464,8 +482,8 @@ export default function Portfolio() {
                       B.Sc. Computer Science &amp; Business, Co-op
                     </p>
                     <p className="text-xs text-slate-500 mt-2">
-                      Expected May 2027 · GPA 4.10 / 4.33 · Dean's Honour Roll ·
-                      Trek Excellence Scholarship (Top 5%)
+                      Expected Dec 2027 · GPA 3.85 / 4.00 · Dean's Honour Roll ·
+                      Trek Excellence Scholarship (Top 5%) · Ranked 6 / 791
                     </p>
                   </div>
                   <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.07]">
@@ -491,7 +509,7 @@ export default function Portfolio() {
                 Tech I work with
               </h3>
             </FadeIn>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {SKILLS.map((s, i) => (
                 <FadeIn key={s.group} delay={i * 0.05}>
                   <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.07] h-full">
@@ -522,7 +540,7 @@ export default function Portfolio() {
           <SectionHeading
             eyebrow="Experience"
             title="Where I've worked"
-            description="Three internships across enterprise security, EdTech, and (next) e-commerce ML."
+            description="Engineering experience across ML infrastructure, GenAI, enterprise security, and autonomous systems."
           />
 
           <ol className="relative border-l border-white/[0.07] pl-8 sm:pl-10 space-y-10">
@@ -540,11 +558,17 @@ export default function Portfolio() {
                   <article className="p-6 sm:p-7 rounded-2xl bg-white/[0.03] border border-white/[0.07] hover:border-violet-400/30 transition-colors">
                     <header className="flex items-start gap-4 flex-wrap">
                       <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center p-2 flex-shrink-0">
-                        <img
-                          src={exp.logo}
-                          alt={`${exp.company} logo`}
-                          className="max-w-full max-h-full object-contain"
-                        />
+                        {exp.logo ? (
+                          <img
+                            src={exp.logo}
+                            alt={`${exp.company} logo`}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-xl font-display font-semibold text-slate-900">
+                            {exp.monogram}
+                          </span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-baseline gap-x-3">

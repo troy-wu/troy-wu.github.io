@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders current experience and resume link', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+
+  expect(screen.getByRole('heading', { name: 'Troy Wu' })).toBeInTheDocument();
+  expect(screen.getByText('$330M+')).toBeInTheDocument();
+  expect(screen.getAllByText(/Tesla/).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('link', { name: /resume/i })[0]).toHaveAttribute(
+    'href',
+    '/resume.pdf'
+  );
 });
