@@ -63,12 +63,6 @@ const NAV_LINKS = [
   { label: 'Contact', id: 'contact' },
 ];
 
-const HERO_STATS = [
-  { value: '$330M+', label: 'Annualized sales enabled' },
-  { value: '80M+', label: 'Products scored' },
-  { value: '2×', label: 'Hackathon wins' },
-];
-
 const SKILLS = [
   {
     group: 'Languages',
@@ -398,21 +392,6 @@ export default function Portfolio() {
               </div>
             </FadeIn>
 
-            {/* Stats */}
-            <FadeIn delay={0.25}>
-              <dl className="mt-12 grid grid-cols-3 gap-6 max-w-md border-t border-white/[0.06] pt-6">
-                {HERO_STATS.map((stat) => (
-                  <div key={stat.label}>
-                    <dt className="text-xs text-slate-500 tracking-wide uppercase">
-                      {stat.label}
-                    </dt>
-                    <dd className="mt-1 text-2xl font-display font-semibold text-white">
-                      {stat.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </FadeIn>
           </div>
 
           {/* Headshot */}
