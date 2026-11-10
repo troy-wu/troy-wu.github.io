@@ -1,1 +1,723 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Troy Wu's personal website"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>Troy Wu</title><script defer="defer" src="/static/js/main.8a879c88.js"></script><link href="/static/css/main.69a810bc.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Troy Wu</title>
+<meta name="description" content="Troy Wu is a software engineer building ML infrastructure and AI agents. Computer science and business at UBC, with internships at Tesla, Amazon, D2L and Absolute Security.">
+<meta property="og:title" content="Troy Wu">
+<meta property="og:description" content="Software engineer building ML infrastructure and AI agents. Tesla, Amazon, D2L, Absolute Security.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://troy-wu.github.io/">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23fff' stroke-width='6'/%3E%3C/svg%3E">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" href="fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/doto.woff2" as="font" type="font/woff2" crossorigin>
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<style>
+/* Layout: one screen. A left sheet a recruiter can read in seconds, and an open
+   floor on the right where a soft-body donut made of characters lives.
+   Rule of the page: pictures are 1-bit, words are plain. */
+:root {
+  --paper: #ffffff;
+  --ink: #000000;
+  --mute: #595959;
+  --font-dot: "Doto", "Courier New", monospace;
+  --font-text: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --gutter: clamp(1rem, 3.2vw, 3rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #000000; --ink: #ffffff; --mute: #a6a6a6; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #000000; --ink: #ffffff; --mute: #a6a6a6; color-scheme: dark; }
+
+@font-face { font-family: "Doto"; src: url("fonts/doto.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("fonts/instrument-sans.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/jetbrains-mono-ascii.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { height: 100%; font-size: clamp(13.5px, 0.5vw + 0.95vh, 18px); -webkit-text-size-adjust: 100%; }
+body {
+  height: 100%; margin: 0;
+  background: var(--paper); color: var(--ink);
+  font: 400 1rem/1.5 var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, p, ol, figure { margin: 0; padding: 0; }
+ol { list-style: none; }
+b, strong { font-weight: 650; }
+a { color: inherit; text-decoration-thickness: 0.07em; text-underline-offset: 0.22em; }
+a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- frame ---------- */
+.page {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 52rem) minmax(17rem, 1fr);
+  grid-template-rows: auto 1fr;
+  column-gap: clamp(1.5rem, 4vw, 4.5rem);
+  row-gap: clamp(0.75rem, 2.4vh, 1.75rem);
+  padding-block: clamp(1rem, 3vh, 2.25rem);
+  padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
+}
+.top {
+  grid-column: 1 / -1;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem;
+}
+.name {
+  font: 900 7rem/0.78 var(--font-dot);
+  letter-spacing: -0.04em; word-spacing: -0.28em;
+  margin-left: -0.05em; padding-bottom: 0.07em;
+}
+.links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.35rem 1.4rem; padding-top: 0.35rem; font-size: 0.9375rem; }
+.links a { padding: 0.1rem 0.15rem; }
+.links .resume { background: var(--ink); color: var(--paper); text-decoration: none; padding: 0.1rem 0.6rem; font-weight: 600; }
+.links .resume:hover { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+
+/* ---------- the sheet ---------- */
+.sheet { grid-column: 1; display: flex; flex-direction: column; gap: clamp(0.9rem, 2.5vh, 2rem); min-width: 0; }
+
+.intro { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1.75rem; align-items: end; }
+.portrait { position: relative; width: 176px; height: 220px; flex: none; }
+.portrait img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.portrait .bit { image-rendering: pixelated; }
+.portrait .real { opacity: 0; object-fit: cover; transition: opacity 0.32s steps(4, end); }
+.portrait:hover .real, .portrait:focus-visible .real { opacity: 1; }
+.about { display: grid; gap: 0.8rem; max-width: 34rem; padding-bottom: 0.2rem; }
+.lede { font-size: 1.7rem; line-height: 1.16; font-weight: 550; letter-spacing: -0.015em; text-wrap: balance; }
+.about p + p { color: var(--mute); }
+.about b { color: var(--ink); }
+
+.roles { display: grid; gap: clamp(0.7rem, 1.9vh, 1.15rem); }
+.role-head { display: flex; align-items: baseline; gap: 0.7rem; }
+.role-head h2 { font-size: 1.125rem; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.role-title { color: var(--mute); font-size: 0.9375rem; }
+.leader { flex: 1; min-width: 1.5rem; align-self: center; height: 0; border-bottom: 2px dotted var(--mute); transform: translateY(0.3em); }
+.role-head time { font-size: 0.9375rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.role p { max-width: 49rem; text-wrap: pretty; }
+
+.more { margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 2.5rem; font-size: 0.9375rem; line-height: 1.45; color: var(--mute); }
+.more b, .more a { color: var(--ink); }
+.more a:hover { color: var(--paper); }
+
+/* ---------- the floor where the donut lives ---------- */
+.home { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-width: 0; min-height: 14rem; }
+.floor-space { flex: 1; }
+.shelf {
+  border-top: 2px solid var(--ink);
+  padding-top: 0.6rem;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.5rem 1rem;
+  font-size: 0.8125rem;
+}
+.hint { color: var(--mute); }
+.toys { display: flex; gap: 0.4rem; }
+.toys button {
+  font: inherit; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--ink); border-radius: 0; padding: 0.2rem 0.55rem; cursor: pointer;
+}
+.toys button:hover, .toys button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+.stage { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+html.can-grab, html.can-grab * { cursor: grab !important; }
+html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+
+/* ---------- narrow screens: stack, and keep the donut in a tank ---------- */
+@media (max-width: 860px) {
+  html { font-size: 16px; }
+  .page { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; row-gap: 1.5rem; padding-block: 1.25rem 2rem; }
+  .top { flex-direction: column; gap: 0.9rem; }
+  .name { font-size: clamp(4.2rem, 22vw, 6.5rem); }
+  .links { justify-content: flex-start; gap: 0.4rem 1.1rem; padding-top: 0; }
+  .sheet { display: contents; }
+  .intro { order: 1; grid-template-columns: minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+  .lede { font-size: 1.5rem; }
+  .home { order: 2; grid-column: 1; grid-row: auto; position: relative; border: 2px solid var(--ink); min-height: 0; }
+  .floor-space { flex: none; height: 17rem; }
+  .shelf { padding: 0.55rem 0.7rem 0.65rem; }
+  .stage { position: absolute; }
+  .work { order: 3; }
+  .more { order: 4; margin-top: 0; grid-template-columns: minmax(0, 1fr); }
+  .role-head { flex-wrap: wrap; gap: 0 0.6rem; }
+  .role-head h2 { order: 1; margin-right: auto; }
+  .role-head time { order: 2; }
+  .role-title { order: 3; width: 100%; }
+  .leader { display: none; }
+}
+/* ---------- short laptop screens: tighten so it still fits ---------- */
+@media (min-width: 861px) and (max-height: 775px) {
+  .page { padding-block: 0.7rem; row-gap: 0.5rem; }
+  .name { font-size: 5.2rem; }
+  .sheet { gap: 0.85rem; }
+  .lede { font-size: 1.45rem; }
+  .about { gap: 0.5rem; }
+  .roles { gap: 0.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portrait .real { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1 class="name">Troy Wu</h1>
+    <nav class="links" aria-label="Resume and profiles">
+      <a class="resume" href="resume.pdf">Resume</a>
+      <a href="https://github.com/troy-wu">GitHub</a>
+      <a href="https://linkedin.com/in/troy-wu">LinkedIn</a>
+      <a href="mailto:troywu5@gmail.com">troywu5@gmail.com</a>
+    </nav>
+  </header>
+
+  <main class="sheet">
+    <section class="intro">
+      <figure class="portrait" tabindex="0" aria-label="Portrait of Troy Wu. Hover or focus to see the photo in colour.">
+        <img class="bit" src="images/troy-1bit.png" width="176" height="220" alt="Portrait of Troy Wu, drawn in black and white dots">
+        <img class="real" src="images/troy.jpg" width="176" height="220" alt="">
+      </figure>
+      <div class="about">
+        <p class="lede">Software engineer building ML infrastructure and AI agents that run in production.</p>
+        <p>Most recently at Tesla on Maps and Navigation. I study computer science and business at UBC, with a <b>3.85 GPA</b>, ranked <b>6th of 791</b> in Sauder, graduating <b>November 2027</b>. Open to software engineering internships and new-grad roles.</p>
+      </div>
+    </section>
+
+    <section class="work" aria-label="Experience">
+      <ol class="roles">
+        <li class="role">
+          <div class="role-head">
+            <h2>Tesla</h2>
+            <span class="role-title">Software engineer intern, Maps and Navigation</span>
+            <span class="leader" aria-hidden="true"></span>
+            <time>Aug – Dec 2026</time>
+          </div>
+          <p>Built an AI agent that matches navigation complaints on social media to fleet telemetry trips at <b>95% precision</b>, ranking candidates across <b>100B+ rows</b> per query.</p>
+        </li>
+        <li class="role">
+          <div class="role-head">
+            <h2>Amazon</h2>
+            <span class="role-title">Software development engineer intern, Everyday Essentials</span>
+            <span class="leader" aria-hidden="true"></span>
+            <time>May – Aug 2026</time>
+          </div>
+          <p>First engineer on a team of applied scientists. Built the ML inference pipeline that scores <b>15B+ product pairs</b> behind <b>$330M+</b> in annualized sales, and cut batch inference from <b>4 days to 8 hours</b>.</p>
+        </li>
+        <li class="role">
+          <div class="role-head">
+            <h2>D2L</h2>
+            <span class="role-title">Software engineer intern, Brightspace GenAI</span>
+            <span class="leader" aria-hidden="true"></span>
+            <time>Jan – Apr 2026</time>
+          </div>
+          <p>Shipped GenAI features used by <b>400+ institutions</b>, including AI Audio Overview, built end to end on Claude Sonnet, AWS Bedrock and Polly.</p>
+        </li>
+        <li class="role">
+          <div class="role-head">
+            <h2>Absolute Security</h2>
+            <span class="role-title">Software engineer intern</span>
+            <span class="leader" aria-hidden="true"></span>
+            <time>May – Dec 2024</time>
+          </div>
+          <p>Built telemetry security services for <b>1M+ enterprise Chromebooks</b>, and a log export service that made error detection <b>30% faster</b>.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="more" aria-label="Project and tools">
+      <p><a href="https://github.com/04christopher/basketbot"><b>BasketBot</b></a> won ProduHacks out of 50 teams. It keeps score of a basketball game by watching the net with TensorFlow and OpenCV.</p>
+      <p><b>Works in</b> Python, Java, C++, C#, TypeScript and SQL, with PyTorch, TensorFlow, AWS, Airflow, Docker and Kubernetes.</p>
+    </section>
+  </main>
+
+  <aside class="home" aria-label="A donut to play with">
+    <div class="floor-space"></div>
+    <div class="shelf">
+      <p class="hint">Grab the donut. Stretch it, throw it.</p>
+      <div class="toys">
+        <button type="button" id="toy-add">Add a donut</button>
+        <button type="button" id="toy-float" aria-pressed="false">Float</button>
+        <button type="button" id="toy-invert">Invert</button>
+      </div>
+    </div>
+    <div class="stage" aria-hidden="true"><canvas></canvas></div>
+  </aside>
+</div>
+
+<script>
+/* A soft-body donut drawn in characters, after Andy Sloane's donut.c.
+   Each donut is two rings of particles held together with position-based
+   dynamics: distance, area and shape-matching constraints. No libraries. */
+(function () {
+  'use strict';
+
+  /*sim-start*/
+  function Sim() {
+    var N = 32, P = 2 * N;            // particles: outer ring 0..N-1, inner ring N..2N-1
+    var SUB = 8, H = 1 / 60 / SUB;    // substeps per 60 Hz step
+    var INNER = 0.4;                  // hole radius as a fraction of the outer radius
+    var K_SHAPE = 230;                // pull toward the rest shape (1/s^2)
+    var A_EDGE = 3, A_SPOKE = 30, A_SHEAR = 30, A_BEND = 90;  // compliances (0 = rigid)
+    var C_DEFORM = 7.5, C_AIR = 0.1;   // damping of wobble, and of everything (1/s)
+    var F_FLOOR = 0.22, F_WALL = 0.04;
+    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, C_ROLL = 1.4;
+
+    var bodies = [];
+    var world = { w: 800, h: 600, floor: 600, homeL: 0, homeR: 800, g: 2600, held: null, tx: 0, ty: 0, sx: 0, sy: 0 };
+
+    function area(b) {
+      var A = 0, i, j, x = b.x, y = b.y;
+      for (i = 0; i < N; i++) {
+        j = (i + 1) % N;
+        A += x[i] * y[j] - x[j] * y[i];
+        A -= x[N + i] * y[N + j] - x[N + j] * y[N + i];
+      }
+      return A / 2;
+    }
+
+    function add(cx, cy, R, vx, spin) {
+      var b = {
+        R: R, x: new Float64Array(P), y: new Float64Array(P), px: new Float64Array(P), py: new Float64Array(P),
+        vx: new Float64Array(P), vy: new Float64Array(P), qx: new Float64Array(P), qy: new Float64Array(P),
+        gw: new Float64Array(P), gs: 1, ox: 0, oy: 0, ci: [], cj: [], cl: [], ca: [],
+        A0: 0, cx: cx, cy: cy, rmax: R, entered: false, down: false
+      };
+      var r = R * INNER, i, j, k, a;
+      for (i = 0; i < N; i++) {
+        a = i / N * 2 * Math.PI;
+        b.qx[i] = R * Math.cos(a); b.qy[i] = R * Math.sin(a);
+        b.qx[N + i] = r * Math.cos(a); b.qy[N + i] = r * Math.sin(a);
+      }
+      for (i = 0; i < P; i++) {
+        b.x[i] = b.px[i] = cx + b.qx[i]; b.y[i] = b.py[i] = cy + b.qy[i];
+        b.vx[i] = vx - spin * b.qy[i]; b.vy[i] = spin * b.qx[i];
+      }
+      function link(i, j, al) {
+        b.ci.push(i); b.cj.push(j); b.ca.push(al);
+        b.cl.push(Math.hypot(b.qx[i] - b.qx[j], b.qy[i] - b.qy[j]));
+      }
+      for (i = 0; i < N; i++) {
+        j = (i + 1) % N; k = (i + 2) % N;
+        link(i, j, A_EDGE); link(N + i, N + j, A_EDGE);
+        link(i, N + i, A_SPOKE); link(i, N + j, A_SHEAR); link(N + i, j, A_SHEAR);
+        link(i, k, A_BEND); link(N + i, N + k, A_BEND);
+      }
+      b.A0 = area(b);
+      bodies.push(b);
+      return b;
+    }
+
+    function centroid(b) {
+      var sx = 0, sy = 0, i;
+      for (i = 0; i < P; i++) { sx += b.x[i]; sy += b.y[i]; }
+      b.cx = sx / P; b.cy = sy / P;
+    }
+
+    function integrate(b) {
+      var x = b.x, y = b.y, i, dx, dy, s = 0, c = 0;
+      centroid(b);
+      for (i = 0; i < P; i++) {
+        dx = x[i] - b.cx; dy = y[i] - b.cy;
+        s += b.qx[i] * dy - b.qy[i] * dx;
+        c += b.qx[i] * dx + b.qy[i] * dy;
+      }
+      var th = Math.atan2(s, c), co = Math.cos(th), si = Math.sin(th);
+      var ax = 0, ay = world.g;
+      // the floor tilts back toward the donut's own corner, so it never rests on the text
+      if (world.g > 0 && world.held !== b && b.cx < world.homeL + b.R) ax = Math.min(HOME_MAX, 60 + HOME_K * (world.homeL + b.R - b.cx));
+      for (i = 0; i < P; i++) {
+        var gx = b.cx + co * b.qx[i] - si * b.qy[i], gy = b.cy + si * b.qx[i] + co * b.qy[i];
+        b.vx[i] += (ax + K_SHAPE * (gx - x[i])) * H;
+        b.vy[i] += (ay + K_SHAPE * (gy - y[i])) * H;
+        b.px[i] = x[i]; b.py[i] = y[i];
+        x[i] += b.vx[i] * H; y[i] += b.vy[i] * H;
+      }
+    }
+
+    function solve(b) {
+      var x = b.x, y = b.y, n = b.ci.length, k, i, j, dx, dy, d, l;
+      for (k = 0; k < n; k++) {
+        i = b.ci[k]; j = b.cj[k];
+        dx = x[j] - x[i]; dy = y[j] - y[i];
+        d = Math.sqrt(dx * dx + dy * dy) || 1e-9;
+        l = (d - b.cl[k]) / (2 + b.ca[k]) / d;
+        x[i] += dx * l; y[i] += dy * l; x[j] -= dx * l; y[j] -= dy * l;
+      }
+      // keep the area of the ring (jelly does not compress, it bulges)
+      var C = area(b) - b.A0, sum = 0, gx, gy, hx, hy, p, q, lam;
+      for (i = 0; i < N; i++) {
+        p = (i + N - 1) % N; q = (i + 1) % N;
+        gx = (y[q] - y[p]) / 2; gy = (x[p] - x[q]) / 2; sum += gx * gx + gy * gy;
+        gx = (y[N + q] - y[N + p]) / 2; gy = (x[N + p] - x[N + q]) / 2; sum += gx * gx + gy * gy;
+      }
+      lam = -C / (sum * 3 + 1e-9);
+      for (i = 0; i < N; i++) {
+        p = (i + N - 1) % N; q = (i + 1) % N;
+        gx = (y[q] - y[p]) / 2; gy = (x[p] - x[q]) / 2;
+        hx = (y[N + q] - y[N + p]) / 2; hy = (x[N + p] - x[N + q]) / 2;
+        x[i] += lam * gx; y[i] += lam * gy;
+        x[N + i] -= lam * hx; y[N + i] -= lam * hy;
+      }
+      // the pointer holds one soft spot of the ring; the rest swings from it
+      if (world.held === b) {
+        var mx = 0, my = 0;
+        for (i = 0; i < P; i++) { mx += b.gw[i] * x[i]; my += b.gw[i] * y[i]; }
+        dx = world.sx + b.ox - mx; dy = world.sy + b.oy - my;
+        d = Math.sqrt(dx * dx + dy * dy);
+        if (d > 28) { dx *= 28 / d; dy *= 28 / d; }
+        for (i = 0; i < P; i++) {
+          l = 0.7 * b.gw[i] / b.gs;
+          x[i] += dx * l; y[i] += dy * l;
+        }
+      }
+    }
+
+    function inside(b, px, py) {
+      var x = b.x, y = b.y, i, j, hit = false;
+      for (i = 0, j = N - 1; i < N; j = i++) {
+        if ((y[i] > py) !== (y[j] > py) && px < (x[j] - x[i]) * (py - y[i]) / (y[j] - y[i]) + x[i]) hit = !hit;
+      }
+      return hit;
+    }
+
+    // push a's outer particles out of b's outline, and b's edge the other way
+    function collide(a, b) {
+      var dx = a.cx - b.cx, dy = a.cy - b.cy, reach = a.rmax + b.rmax;
+      if (dx * dx + dy * dy > reach * reach) return;
+      var i, j, k, t, ex, ey, qx, qy, d2, best, bj, bt, bqx, bqy, s;
+      for (i = 0; i < N; i++) {
+        var px = a.x[i], py = a.y[i];
+        dx = px - b.cx; dy = py - b.cy;
+        if (dx * dx + dy * dy > b.rmax * b.rmax || !inside(b, px, py)) continue;
+        best = Infinity;
+        for (j = 0; j < N; j++) {
+          k = (j + 1) % N;
+          ex = b.x[k] - b.x[j]; ey = b.y[k] - b.y[j];
+          t = ((px - b.x[j]) * ex + (py - b.y[j]) * ey) / (ex * ex + ey * ey || 1e-9);
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          qx = b.x[j] + ex * t; qy = b.y[j] + ey * t;
+          d2 = (qx - px) * (qx - px) + (qy - py) * (qy - py);
+          if (d2 < best) { best = d2; bj = j; bt = t; bqx = qx; bqy = qy; }
+        }
+        k = (bj + 1) % N;
+        dx = bqx - px; dy = bqy - py;
+        s = 1 + (1 - bt) * (1 - bt) + bt * bt;
+        a.x[i] += dx / s; a.y[i] += dy / s;
+        b.x[bj] -= dx * (1 - bt) / s; b.y[bj] -= dy * (1 - bt) / s;
+        b.x[k] -= dx * bt / s; b.y[k] -= dy * bt / s;
+      }
+    }
+
+    function walls(b) {
+      var x = b.x, y = b.y, i, top = Infinity;
+      b.down = false;
+      for (i = 0; i < P; i++) {
+        if (y[i] > world.floor) { y[i] = world.floor; x[i] -= (x[i] - b.px[i]) * F_FLOOR; b.down = true; }
+        if (b.entered && y[i] < 0) { y[i] = 0; x[i] -= (x[i] - b.px[i]) * F_WALL; }
+        if (x[i] < 0) { x[i] = 0; y[i] -= (y[i] - b.py[i]) * F_WALL; }
+        if (x[i] > world.w) { x[i] = world.w; y[i] -= (y[i] - b.py[i]) * F_WALL; }
+        if (y[i] < top) top = y[i];
+      }
+      if (top > 1) b.entered = true;
+    }
+
+    function finish(b) {
+      var x = b.x, y = b.y, i, mx = 0, my = 0, L = 0, I = 0, rx, ry, m = 0, v2, far = 0;
+      centroid(b);
+      for (i = 0; i < P; i++) {
+        b.vx[i] = (x[i] - b.px[i]) / H; b.vy[i] = (y[i] - b.py[i]) / H;
+        mx += b.vx[i]; my += b.vy[i];
+      }
+      mx /= P; my /= P;
+      for (i = 0; i < P; i++) {
+        rx = x[i] - b.cx; ry = y[i] - b.cy;
+        L += rx * (b.vy[i] - my) - ry * (b.vx[i] - mx); I += rx * rx + ry * ry;
+        if (i < N && rx * rx + ry * ry > far) far = rx * rx + ry * ry;
+      }
+      b.rmax = Math.sqrt(far) + 2;
+      var w = L / (I || 1), kd = Math.exp(-C_DEFORM * H), ka = Math.exp(-(world.g > 0 ? (b.down ? C_ROLL : C_AIR) : 0.45) * H);
+      for (i = 0; i < P; i++) {
+        rx = x[i] - b.cx; ry = y[i] - b.cy;
+        var ux = mx - w * ry, uy = my + w * rx;      // rigid part of the motion
+        b.vx[i] = (ux + (b.vx[i] - ux) * kd) * ka;
+        b.vy[i] = (uy + (b.vy[i] - uy) * kd) * ka;
+        v2 = b.vx[i] * b.vx[i] + b.vy[i] * b.vy[i];
+        if (v2 > VMAX * VMAX) { v2 = VMAX / Math.sqrt(v2); b.vx[i] *= v2; b.vy[i] *= v2; v2 = VMAX * VMAX; }
+        if (v2 > m) m = v2;
+      }
+      return m;
+    }
+
+    // one 60 Hz step; returns the fastest particle speed (px/s)
+    function step() {
+      var s, i, j, n = bodies.length, m = 0, v;
+      for (s = 0; s < SUB; s++) {
+        world.sx += (world.tx - world.sx) * 0.3; world.sy += (world.ty - world.sy) * 0.3;
+        for (i = 0; i < n; i++) integrate(bodies[i]);
+        for (i = 0; i < n; i++) solve(bodies[i]);
+        for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) { collide(bodies[i], bodies[j]); collide(bodies[j], bodies[i]); }
+        for (i = 0; i < n; i++) walls(bodies[i]);
+        for (i = 0; i < n; i++) { v = finish(bodies[i]); if (s === SUB - 1 && v > m) m = v; }
+      }
+      return Math.sqrt(m);
+    }
+
+    function hit(px, py) {
+      for (var i = bodies.length - 1; i >= 0; i--) if (inside(bodies[i], px, py)) return bodies[i];
+      return null;
+    }
+
+    function grab(b, px, py) {
+      var i, d, near = Infinity, sum = 0, s2 = 0, mx = 0, my = 0;
+      for (i = 0; i < P; i++) { d = Math.hypot(b.x[i] - px, b.y[i] - py); if (d < near) near = d; }
+      var reach = near + b.R * 0.42;
+      for (i = 0; i < P; i++) {
+        d = 1 - Math.hypot(b.x[i] - px, b.y[i] - py) / reach;
+        b.gw[i] = d > 0 ? d * d : 0; sum += b.gw[i];
+      }
+      for (i = 0; i < P; i++) { b.gw[i] /= sum; s2 += b.gw[i] * b.gw[i]; mx += b.gw[i] * b.x[i]; my += b.gw[i] * b.y[i]; }
+      b.gs = s2; b.ox = mx - px; b.oy = my - py;
+      world.held = b; world.tx = world.sx = px; world.ty = world.sy = py;
+    }
+
+    return { N: N, bodies: bodies, world: world, add: add, step: step, hit: hit, grab: grab, centroid: centroid, area: area };
+  }
+  /*sim-end*/
+
+  var stage = document.querySelector('.stage');
+  if (!stage) return;
+  var canvas = stage.querySelector('canvas'), ctx = canvas.getContext('2d');
+  var space = document.querySelector('.floor-space');
+  var root = document.documentElement;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var sim = Sim(), N = sim.N, world = sim.world, bodies = sim.bodies;
+
+  var W = 0, HH = 0, dpr = 1, ink = '#000', paper = '#fff', darkInk = false;
+  var raf = 0, last = 0, acc = 0, still = 0, asleep = true;
+  var SIZES = [1, 0.42, 0.5, 0.36, 0.45], MAX = SIZES.length;
+
+  /* ---------- drawing: the donut as shaded characters ---------- */
+  var RAMP = ' .,-~:;=!*#$@';
+  var LX = -0.5, LY = -0.62, LZ = 0.6;     // light from the upper left, toward the viewer
+  var TWIST = 0.07, RIDGES = 7, FLOOR = 0.24;
+  var cw = 7, ch = 12, fs = 11, buf = new Uint8Array(1), bx0 = 0, by0 = 0, bw = 0, bh = 0;
+
+  function tri(x0, y0, t0, rx0, ry0, u0, x1, y1, t1, rx1, ry1, u1, x2, y2, t2, rx2, ry2, u2) {
+    var d = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+    if (d > -1e-6 && d < 1e-6) return;
+    var c0 = Math.max(bx0, Math.floor(Math.min(x0, x1, x2) / cw)), c1 = Math.min(bx0 + bw - 1, Math.floor(Math.max(x0, x1, x2) / cw));
+    var r0 = Math.max(by0, Math.floor(Math.min(y0, y1, y2) / ch)), r1 = Math.min(by0 + bh - 1, Math.floor(Math.max(y0, y1, y2) / ch));
+    var cx, cy, px, py, w0, w1, w2, t, rx, ry, l, a, z, v, u;
+    for (cy = r0; cy <= r1; cy++) {
+      py = (cy + 0.5) * ch;
+      for (cx = c0; cx <= c1; cx++) {
+        px = (cx + 0.5) * cw;
+        w0 = ((y1 - y2) * (px - x2) + (x2 - x1) * (py - y2)) / d;
+        w1 = ((y2 - y0) * (px - x2) + (x0 - x2) * (py - y2)) / d;
+        w2 = 1 - w0 - w1;
+        if (w0 < -0.001 || w1 < -0.001 || w2 < -0.001) continue;
+        t = w0 * t0 + w1 * t1 + w2 * t2;
+        rx = w0 * rx0 + w1 * rx1 + w2 * rx2; ry = w0 * ry0 + w1 * ry1 + w2 * ry2;
+        l = Math.sqrt(rx * rx + ry * ry) || 1;
+        a = 2 * t - 1; z = Math.sqrt(Math.max(0, 1 - a * a));     // a round tube, seen from above
+        u = w0 * u0 + w1 * u1 + w2 * u2;
+        v = (a * (rx * LX + ry * LY) / l + z * LZ + 0.72) / 1.6;  // brightness 0..1
+        v += TWIST * Math.sin(6.2832 * RIDGES * u + 2.2 * a);     // faint ridges, so you can see it roll
+        v = v < 0 ? 0 : v > 1 ? 1 : v;
+        if (!darkInk) v = 1 - v;                                  // on paper, shadow is the dense end
+        v = FLOOR + (1 - FLOOR) * v;                              // never so faint that the body dissolves
+        buf[(cy - by0) * bw + (cx - bx0)] = 1 + Math.round(v * (RAMP.length - 2));
+      }
+    }
+  }
+
+  function drawBody(b) {
+    var x = b.x, y = b.y, i, j, minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    // an opaque body, so it sits on top of the page like an object; the hole stays open
+    ctx.beginPath();
+    for (i = 0; i < N; i++) {
+      if (i) ctx.lineTo(x[i], y[i]); else ctx.moveTo(x[i], y[i]);
+      if (x[i] < minx) minx = x[i]; if (x[i] > maxx) maxx = x[i];
+      if (y[i] < miny) miny = y[i]; if (y[i] > maxy) maxy = y[i];
+    }
+    ctx.closePath();
+    for (i = N - 1; i >= 0; i--) { if (i === N - 1) ctx.moveTo(x[N + i], y[N + i]); else ctx.lineTo(x[N + i], y[N + i]); }
+    ctx.closePath();
+    ctx.fillStyle = paper; ctx.fill('evenodd');
+
+    bx0 = Math.floor(minx / cw); by0 = Math.floor(miny / ch);
+    bw = Math.floor(maxx / cw) - bx0 + 1; bh = Math.floor(maxy / ch) - by0 + 1;
+    if (bw <= 0 || bh <= 0 || bw * bh > 60000) return;
+    if (buf.length < bw * bh) buf = new Uint8Array(bw * bh); else buf.fill(0, 0, bw * bh);
+    for (i = 0; i < N; i++) {
+      j = (i + 1) % N;
+      var rix = x[i] - x[N + i], riy = y[i] - y[N + i], rjx = x[j] - x[N + j], rjy = y[j] - y[N + j];
+      var ui = i / N, uj = (i + 1) / N;
+      tri(x[i], y[i], 1, rix, riy, ui, x[j], y[j], 1, rjx, rjy, uj, x[N + i], y[N + i], 0, rix, riy, ui);
+      tri(x[j], y[j], 1, rjx, rjy, uj, x[N + j], y[N + j], 0, rjx, rjy, uj, x[N + i], y[N + i], 0, rix, riy, ui);
+    }
+    ctx.fillStyle = ink;
+    var r, c, k;
+    for (r = 0; r < bh; r++) for (c = 0; c < bw; c++) {
+      k = buf[r * bw + c];
+      if (k > 1) ctx.fillText(RAMP[k], (bx0 + c + 0.5) * cw, (by0 + r + 0.5) * ch);
+    }
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, HH);
+    ctx.font = '800 ' + fs + 'px "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
+  }
+
+  /* ---------- loop ---------- */
+  function frame(t) {
+    raf = 0;
+    var dt = Math.min((t - last) / 1000, 0.05), n = 0, v = 0;
+    last = t; acc += dt;
+    while (acc >= 1 / 60 && n < 3) { v = sim.step(); acc -= 1 / 60; n++; }
+    if (n === 3) acc = 0;
+    draw();
+    if (n) still = (v < 2.5 && !world.held) ? still + n : 0;
+    if (still > 45) { asleep = true; return; }
+    raf = requestAnimationFrame(frame);
+  }
+  function wake() {
+    still = 0;
+    if (!raf) { asleep = false; last = performance.now(); acc = 0; raf = requestAnimationFrame(frame); }
+  }
+
+  /* ---------- world: measure the page, spawn donuts ---------- */
+  function colours() {
+    var cs = getComputedStyle(root);
+    ink = cs.getPropertyValue('--ink').trim() || '#000';
+    paper = cs.getPropertyValue('--paper').trim() || '#fff';
+    darkInk = paper === '#000000' || paper === '#000';
+  }
+  function measure() {
+    var sr = stage.getBoundingClientRect(), hr = space.getBoundingClientRect();
+    W = sr.width; HH = sr.height;
+    world.w = W; world.h = HH;
+    world.floor = Math.min(hr.bottom - sr.top, HH);
+    world.homeL = hr.left - sr.left; world.homeR = hr.right - sr.left;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var pw = Math.round(W * dpr), ph = Math.round(HH * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+  }
+  function baseRadius() {
+    var r = Math.min((world.homeR - world.homeL) * 0.34, world.floor * 0.33);
+    return Math.max(52, Math.min(178, r));
+  }
+  function spawn(resting) {
+    var k = bodies.length, R = baseRadius() * SIZES[k % MAX];
+    var mid = (world.homeL + world.homeR) / 2, span = Math.max(0, (world.homeR - world.homeL) / 2 - R - 8);
+    var x = mid + (k ? (Math.random() * 2 - 1) * span : span * 0.15);
+    if (!k) { fs = R > 100 ? 11 : 9; cw = R > 100 ? 7 : 6; ch = R > 100 ? 12 : 10; }
+    var b = sim.add(x, resting ? world.floor - R - 1 : -R - 12, R, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 3);
+    if (resting) b.entered = true;
+    return b;
+  }
+
+  /* ---------- pointer: grab, drag, throw ---------- */
+  var pointerId = null, swallowClick = false;
+  function local(e) {
+    var r = stage.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  window.addEventListener('pointerdown', function (e) {
+    swallowClick = false;
+    if (pointerId !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    var p = local(e), b = sim.hit(p.x, p.y);
+    if (!b) return;
+    e.preventDefault();
+    swallowClick = true;
+    pointerId = e.pointerId;
+    sim.grab(b, p.x, p.y);
+    root.classList.add('grabbing');
+    try { root.setPointerCapture(pointerId); } catch (err) {}
+    wake();
+  }, true);
+  window.addEventListener('pointermove', function (e) {
+    var p = local(e);
+    if (e.pointerId === pointerId) { world.tx = p.x; world.ty = p.y; wake(); }
+    else if (pointerId === null && e.pointerType === 'mouse') root.classList.toggle('can-grab', !!sim.hit(p.x, p.y));
+  }, true);
+  function letGo(e) {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null; world.held = null;
+    root.classList.remove('grabbing');
+    wake();
+  }
+  window.addEventListener('pointerup', letGo, true);
+  window.addEventListener('pointercancel', letGo, true);
+  // a tap that grabbed the donut should not also press whatever is under it
+  window.addEventListener('click', function (e) {
+    if (swallowClick) { swallowClick = false; e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  // on touch screens, holding the donut must not scroll the page
+  window.addEventListener('touchstart', function (e) {
+    var t = e.touches[0], r = stage.getBoundingClientRect();
+    if (t && sim.hit(t.clientX - r.left, t.clientY - r.top)) e.preventDefault();
+  }, { passive: false, capture: true });
+
+  /* ---------- the three buttons ---------- */
+  var addBtn = document.getElementById('toy-add'), floatBtn = document.getElementById('toy-float'), invertBtn = document.getElementById('toy-invert');
+  addBtn.addEventListener('click', function () {
+    if (bodies.length >= MAX) { bodies.length = 0; world.held = null; }
+    spawn(false);
+    addBtn.textContent = bodies.length >= MAX ? 'Start over' : 'Add a donut';
+    wake();
+  });
+  floatBtn.addEventListener('click', function () {
+    var off = world.g > 0, i, k, b;
+    world.g = off ? 0 : 2600;
+    floatBtn.setAttribute('aria-pressed', String(off));
+    floatBtn.textContent = off ? 'Drop' : 'Float';
+    if (off) for (i = 0; i < bodies.length; i++) {      // a small push so they lift off
+      b = bodies[i];
+      var ux = (Math.random() - 0.5) * 160, uy = -90 - Math.random() * 110;
+      for (k = 0; k < 2 * N; k++) { b.vx[k] += ux; b.vy[k] += uy; }
+    }
+    wake();
+  });
+  invertBtn.addEventListener('click', function () {
+    var next = darkInk ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (err) {}
+    colours(); draw();
+  });
+
+  /* ---------- start ---------- */
+  function settle() { for (var i = 0; i < 240 && sim.step() > 2; i++) {} }
+  function resized() {
+    measure();
+    for (var i = 0; i < bodies.length; i++) {            // keep donuts on stage, without a kick
+      var b = bodies[i], k, dx, dy;
+      sim.centroid(b);
+      dx = Math.min(Math.max(b.cx, b.R), Math.max(b.R, W - b.R)) - b.cx;
+      dy = Math.min(b.cy, world.floor - b.R * 0.6) - b.cy;
+      if (b.entered && (dx || dy)) for (k = 0; k < 2 * N; k++) { b.x[k] += dx; b.y[k] += dy; b.px[k] += dx; b.py[k] += dy; }
+    }
+    if (reduce) { settle(); draw(); } else wake();
+  }
+  colours(); measure();
+  spawn(reduce);
+  if (reduce) { settle(); draw(); } else wake();
+
+  if (window.ResizeObserver) { var ro = new ResizeObserver(resized); ro.observe(stage); ro.observe(space); }
+  window.addEventListener('resize', resized);
+  window.addEventListener('scroll', function () { measure(); if (asleep) draw(); wake(); }, { passive: true });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { colours(); draw(); });
+  new MutationObserver(function () { colours(); draw(); }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.load) document.fonts.load('800 11px "JetBrains Mono"').then(draw);
+})();
+</script>
+</body>
+</html>
