@@ -15,7 +15,16 @@ The entry, in Markdown.
 
 Edit it in the browser here: https://github.com/troy-wu/troy-wu.github.io/edit/gh-pages/journal/entries.md
 
-The note at the top of that file lists what you can use (pull quotes, section breaks, pictures, drafts). Pictures go in `journal/images/`.
+The note at the top of that file lists what you can use (pull quotes, section breaks, pictures, covers, "Soon:" placeholders, drafts). Pictures go in `journal/images/`. The text above the first title in that file is the note about me beside the list.
+
+### In VS Code
+
+```
+git clone -b gh-pages https://github.com/troy-wu/troy-wu.github.io.git
+code troy-wu.github.io
+```
+
+Edit `journal/entries.md`, then commit and push from the Source Control panel. Run `git pull` first if changes were pushed from elsewhere.
 
 ## What is where
 
