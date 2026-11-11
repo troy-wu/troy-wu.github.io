@@ -86,9 +86,9 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 .sheet { grid-column: 1; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
 
 .intro { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1.75rem; align-items: center; }
-.portrait { width: clamp(132px, 10.5rem, 190px); aspect-ratio: 1 / 1; flex: none; }
+.portrait { width: clamp(140px, 11.5rem, 208px); aspect-ratio: 1 / 1; flex: none; }
 .portrait img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 32%; }
-.about { display: grid; gap: 0.8rem; max-width: 34rem; }
+.about { display: grid; gap: 0.8rem; }
 .lede { font-size: 1.7rem; line-height: 1.16; font-weight: 550; letter-spacing: -0.015em; text-wrap: balance; }
 .about p + p { color: var(--mute); }
 .about b { color: var(--ink); }
@@ -152,7 +152,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   .team { order: 3; width: 100%; }
 }
 /* ---------- short laptop screens: a smaller lede so it still fits ---------- */
-@media (min-width: 861px) and (max-height: 700px) {
+@media (min-width: 861px) and (max-height: 740px) {
+  .portrait { width: 9.4rem; }
   .lede { font-size: 1.45rem; }
   .about { gap: 0.5rem; }
 }
@@ -167,7 +168,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       <a class="resume" href="resume.pdf">Resume</a>
       <a href="https://github.com/troy-wu">GitHub</a>
       <a href="https://linkedin.com/in/troy-wu">LinkedIn</a>
-      <a href="journal/">Journal</a>
+      <a href="journal/">More about me</a>
       <a href="mailto:troywu5@gmail.com">troywu5@gmail.com</a>
     </nav>
   </header>
@@ -248,7 +249,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
 </div>
 
 <script>
-/* Soft-body toys drawn in characters, after Andy Sloane's donut.c.
+/* Soft-body toys drawn in characters, after Andy Sloane's donut.c. The page opens with the letters of the name.
    Each object is two rings of particles held together with position-based
    dynamics: distance, area and shape-matching constraints. No libraries. */
 (function () {
@@ -256,13 +257,13 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
 
   /*sim-start*/
   function Sim() {
-    var N = 40, P = 2 * N;            // particles: outline 0..N-1, inner ring N..2N-1
+    var N = 48, P = 2 * N;            // particles: outline 0..N-1, inner ring N..2N-1
     var SUB = 8, H = 1 / 60 / SUB;    // substeps per 60 Hz step
     var K_SHAPE = 230;                // pull toward the rest shape (1/s^2)
     var A_EDGE = 3, A_SPOKE = 30, A_SHEAR = 30, A_BEND = 90;  // compliances (0 = rigid)
     var C_DEFORM = 7.5, C_AIR = 0.1, C_ROLL = 1.4;            // damping (1/s)
     var F_FLOOR = 0.22, F_WALL = 0.04, F_BODY = 0.12;
-    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, FENCE = 0;
+    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, FENCE = 0, K_UP = 450;
 
     /* Outlines at unit size. inner: where the second ring sits. hole: the inner
        ring is an edge you can see through. dome: how rounded the top looks. */
@@ -288,6 +289,46 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       } }
     };
 
+    /* Bubble letters. Each is a polygon drawn clockwise on a grid 1.3 tall; the corners are
+       rounded off and the outline is then walked in N even steps. */
+    function letter(poly, counter) {
+      var pts = poly, out, i, j, pass, a, b, len = [], total = 0, res = [], mx = 0, my = 0;
+      for (pass = 0; pass < 2; pass++) {             // corner cutting, twice
+        out = [];
+        for (i = 0; i < pts.length; i++) {
+          a = pts[i]; b = pts[(i + 1) % pts.length];
+          out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+        }
+        pts = out;
+      }
+      for (i = 0; i < pts.length; i++) { b = pts[(i + 1) % pts.length]; len.push(Math.hypot(b[0] - pts[i][0], b[1] - pts[i][1])); total += len[i]; }
+      for (i = 0, j = 0, a = 0; i < N; i++) {
+        var want = i / N * total;
+        while (a + len[j] < want) { a += len[j]; j++; }
+        var t = (want - a) / len[j]; b = pts[(j + 1) % pts.length];
+        res.push([pts[j][0] + (b[0] - pts[j][0]) * t, pts[j][1] + (b[1] - pts[j][1]) * t]);
+        mx += res[i][0] / N; my += res[i][1] / N;
+      }
+      for (i = 0; i < N; i++) { res[i][0] -= mx; res[i][1] -= my; }
+      return { inner: 0.5, hole: false, dome: 0, size: 1, puffy: true,
+               counter: counter ? { x: counter[0] - mx, y: counter[1] - my, rx: counter[2], ry: counter[3] } : null,
+               at: function (i) { return res[i]; } };
+    }
+    KINDS.T = letter([[0, 0], [1, 0], [1, 0.42], [0.72, 0.42], [0.72, 1.3], [0.28, 1.3], [0.28, 0.42], [0, 0.42]]);
+    KINDS.R = letter([[0, 0], [0.64, 0], [1, 0.14], [1.04, 0.46], [0.94, 0.7], [0.78, 0.8], [1.08, 1.3], [0.64, 1.3], [0.44, 0.94], [0.42, 0.94], [0.42, 1.3], [0, 1.3]], [0.62, 0.4, 0.12, 0.1]);
+    KINDS.O = { inner: 0.4, hole: true, dome: 0, size: 1, puffy: true, counter: null, at: function (i) {
+      var a = i / N * 2 * Math.PI; return [0.54 * Math.cos(a), 0.65 * Math.sin(a)];
+    } };
+    KINDS.Y = letter([[0, 0], [0.42, 0], [0.56, 0.34], [0.7, 0], [1.12, 0], [0.78, 0.76], [0.78, 1.3], [0.34, 1.3], [0.34, 0.76]]);
+    KINDS.W = letter([[0, 0], [0.38, 0], [0.48, 0.7], [0.6, 0.2], [0.92, 0.2], [1.04, 0.7], [1.14, 0], [1.52, 0], [1.24, 1.3], [0.9, 1.3], [0.76, 0.74], [0.62, 1.3], [0.28, 1.3]]);
+    KINDS.U = letter([[0, 0], [0.42, 0], [0.42, 0.84], [0.6, 0.84], [0.6, 0], [1.02, 0], [1.02, 0.96], [0.76, 1.3], [0.26, 1.3], [0, 0.96]]);
+    // the box each shape fills, at unit size, so the page can line letters up
+    function shape(kind) {
+      var K = KINDS[kind], i, p, o = { minx: Infinity, maxx: -Infinity, miny: Infinity, maxy: -Infinity };
+      for (i = 0; i < N; i++) { p = K.at(i); o.minx = Math.min(o.minx, p[0] * K.size); o.maxx = Math.max(o.maxx, p[0] * K.size); o.miny = Math.min(o.miny, p[1] * K.size); o.maxy = Math.max(o.maxy, p[1] * K.size); }
+      return o;
+    }
+
     var bodies = [];
     var world = { w: 800, h: 600, floor: 600, homeL: 0, homeR: 800, g: 2600, held: null, tx: 0, ty: 0, sx: 0, sy: 0 };
 
@@ -304,11 +345,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     function add(kind, cx, cy, size, vx, spin) {
       var K = KINDS[kind], s = size * K.size, i, j, k, p, far = 0;
       var b = {
-        kind: kind, hole: K.hole, dome: K.dome, R: size, w: 1,
+        kind: kind, hole: K.hole, dome: K.dome, puffy: !!K.puffy, counter: K.counter || null, s: s, R: size, w: 1,
         x: new Float64Array(P), y: new Float64Array(P), px: new Float64Array(P), py: new Float64Array(P),
         vx: new Float64Array(P), vy: new Float64Array(P), qx: new Float64Array(P), qy: new Float64Array(P),
         gw: new Float64Array(P), gx: new Float64Array(P), gy: new Float64Array(P), gs: 1, ks: K_SHAPE, ox: 0, oy: 0, ci: [], cj: [], cl: [], ca: [],
-        A0: 0, cx: cx, cy: cy, rmax: size, sp: 1e3, entered: false, down: false, touch: false
+        A0: 0, cx: cx, cy: cy, rmax: size, sp: 1e3, slot: null, entered: false, down: false, touch: false
       };
       for (i = 0; i < N; i++) {
         p = K.at(i);
@@ -368,10 +409,14 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         dx = world.homeL - FENCE - (b.cx - b.R);
         if (dx > 0 && dx < 140 && b.sp < 300) ax += Math.min(14000, 120 * dx);
       }
+      // a letter keeps to its place in the word until it has landed and settled, or someone grabs it
+      if (b.slot !== null && world.g > 0 && world.held !== b) ax += Math.max(-1800, Math.min(1800, 60 * (b.slot - b.cx)));
+      // letters are bottom-heavy: let go of one and it stands itself back up, so the name stays readable
+      var up = (b.puffy && world.g > 0 && world.held !== b) ? -K_UP * 80 / b.s * si : 0;
       for (i = 0; i < P; i++) {
         var gx = b.cx + co * b.qx[i] - si * b.qy[i], gy = b.cy + si * b.qx[i] + co * b.qy[i];
-        b.vx[i] += (ax + b.ks * (gx - x[i])) * H;
-        b.vy[i] += (ay + b.ks * (gy - y[i])) * H;
+        b.vx[i] += (ax + b.ks * (gx - x[i]) - up * (y[i] - b.cy)) * H;
+        b.vy[i] += (ay + b.ks * (gy - y[i]) + up * (x[i] - b.cx)) * H;
         b.px[i] = x[i]; b.py[i] = y[i];
         x[i] += b.vx[i] * H; y[i] += b.vy[i] * H;
       }
@@ -529,7 +574,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       world.held = b; world.tx = world.sx = px; world.ty = world.sy = py;
     }
 
-    return { N: N, bodies: bodies, world: world, add: add, remove: remove, step: step, hit: hit, grab: grab, centroid: centroid, area: area };
+    return { N: N, bodies: bodies, world: world, add: add, remove: remove, shape: shape, step: step, hit: hit, grab: grab, centroid: centroid, area: area };
   }
   /*sim-end*/
 
@@ -554,6 +599,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   var pa = 0, pf = 0, ps = 0;
   var cw = 6, ch = 11, fs = 10, buf = new Uint8Array(1), bx0 = 0, by0 = 0, bw = 0, bh = 0;
   var nx = new Float64Array(N), ny = new Float64Array(N);
+  var FONT = '800 SIZEpx "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
 
   // one triangle; each corner carries a tilt (-1..1), an outward direction and a position around the rim
   function tri(x0, y0, a0, rx0, ry0, u0, x1, y1, a1, rx1, ry1, u1, x2, y2, a2, rx2, ry2, u2) {
@@ -598,18 +644,25 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       for (i = N - 1; i >= 0; i--) { if (i === N - 1) path.moveTo(x[N + i], y[N + i]); else path.lineTo(x[N + i], y[N + i]); }
       path.closePath();
     }
-    ctx.fillStyle = paper; ctx.fill(path, 'evenodd');
-    // a clear margin and a faint outline, so neighbours read as separate things
+    // a clear margin, so neighbours read as separate things
     ctx.lineJoin = 'round';
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, world.floor); ctx.clip();
     ctx.strokeStyle = paper; ctx.lineWidth = 8; ctx.stroke(path);
     ctx.restore();
-    if (OUTLINE) { ctx.globalAlpha = OUTLINE; ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(path); ctx.globalAlpha = 1; }
+    if (b.puffy) {                                 // letters get a solid side, up and to the right, like a block
+      var depth = Math.max(3, b.s * 0.07), d;
+      ctx.fillStyle = ink;
+      for (d = 1; d <= 5; d++) { ctx.save(); ctx.translate(depth * d / 5, -depth * d / 5); ctx.fill(path, 'evenodd'); ctx.restore(); }
+    }
+    ctx.fillStyle = paper; ctx.fill(path, 'evenodd');
+    if (b.puffy) { ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(path); }
+    else if (OUTLINE) { ctx.globalAlpha = OUTLINE; ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(path); ctx.globalAlpha = 1; }
 
     bx0 = Math.floor(minx / cw); by0 = Math.floor(miny / ch);
     bw = Math.floor(maxx / cw) - bx0 + 1; bh = Math.floor(maxy / ch) - by0 + 1;
     if (bw <= 0 || bh <= 0 || bw * bh > 60000) return;
     if (buf.length < bw * bh) buf = new Uint8Array(bw * bh); else buf.fill(0, 0, bw * bh);
+    if (b.puffy) { puff(b); stamp(); counterOf(b); return; }
     for (i = 0; i < N; i++) {                      // outward direction of the outline at each particle
       p = (i + N - 1) % N; j = (i + 1) % N;
       tx = x[j] - x[p]; ty = y[j] - y[p]; l = Math.sqrt(tx * tx + ty * ty) || 1;
@@ -623,18 +676,65 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       tri(x[j], y[j], 1, nx[j], ny[j], uj, x[N + j], y[N + j], aI, nx[j], ny[j], uj, x[N + i], y[N + i], aI, nx[i], ny[i], ui);
       if (!b.hole) tri(x[N + i], y[N + i], aI, nx[i], ny[i], ui, x[N + j], y[N + j], aI, nx[j], ny[j], uj, b.cx, b.cy, 0, 0, 0, (ui + uj) / 2);
     }
-    ctx.fillStyle = ink;
+    stamp();
+  }
+
+  // write the shaded cells out as characters
+  function stamp() {
     var r, c, k;
+    ctx.fillStyle = ink;
     for (r = 0; r < bh; r++) for (c = 0; c < bw; c++) {
       k = buf[r * bw + c];
       if (k > 1) ctx.fillText(RAMP[k], (bx0 + c + 0.5) * cw, (by0 + r + 0.5) * ch);
     }
   }
 
+  // bubble shading: every cell inside the outline is lit by how close it is to the nearest edge, and which way that edge faces
+  function puff(b) {
+    var x = b.x, y = b.y, rings = b.hole ? 2 : 1, rad = b.s * 0.25, r, c, g, i, j, o, px, py, ins, best, qx, qy, ex, ey, t, dx, dy, d2, d, a, z, v;
+    for (r = 0; r < bh; r++) {
+      py = (by0 + r + 0.5) * ch;
+      for (c = 0; c < bw; c++) {
+        px = (bx0 + c + 0.5) * cw; best = Infinity; ins = false;
+        for (g = 0; g < rings; g++) {
+          o = g * N;
+          for (i = 0, j = N - 1; i < N; j = i++) {
+            if ((y[o + i] > py) !== (y[o + j] > py) && px < (x[o + j] - x[o + i]) * (py - y[o + i]) / (y[o + j] - y[o + i]) + x[o + i]) ins = !ins;
+            ex = x[o + i] - x[o + j]; ey = y[o + i] - y[o + j];
+            t = ((px - x[o + j]) * ex + (py - y[o + j]) * ey) / (ex * ex + ey * ey || 1e-9);
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            dx = x[o + j] + ex * t - px; dy = y[o + j] + ey * t - py; d2 = dx * dx + dy * dy;
+            if (d2 < best) { best = d2; qx = dx; qy = dy; }
+          }
+        }
+        if (!ins) continue;
+        d = Math.sqrt(best) || 1e-6;
+        a = 1 - d / rad; if (a < 0) a = 0;
+        z = Math.sqrt(1 - a * a);
+        v = (a * (qx * LX + qy * LY) / d + z * LZ + 0.72) / 1.6;
+        v = v < 0 ? 0 : v > 1 ? 1 : v;
+        if (!darkInk) v = 1 - v;
+        v = FLOOR + (1 - FLOOR) * v;
+        buf[r * bw + c] = 1 + Math.round(v * (RAMP.length - 2));
+      }
+    }
+  }
+
+  // the eye of the R: a small opening that turns with the letter
+  function counterOf(b) {
+    if (!b.counter) return;
+    var i, sn = 0, cs = 0, dx, dy, k = b.counter;
+    for (i = 0; i < 2 * N; i++) { dx = b.x[i] - b.cx; dy = b.y[i] - b.cy; sn += b.qx[i] * dy - b.qy[i] * dx; cs += b.qx[i] * dx + b.qy[i] * dy; }
+    ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate(Math.atan2(sn, cs));
+    ctx.beginPath(); ctx.ellipse(k.x * b.s, k.y * b.s, k.rx * b.s, k.ry * b.s, 0, 0, 6.2832);
+    ctx.fillStyle = paper; ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke();
+    ctx.restore();
+  }
+
   function draw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, HH);
-    ctx.font = '800 ' + fs + 'px "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+    ctx.font = FONT.replace('SIZE', fs);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
   }
@@ -648,7 +748,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (n === 3) acc = 0;
     draw();
     if (n) still = (v < 2.5 && !world.held) ? still + n : 0;
-    if (still > 45) { asleep = true; return; }
+    if (still > 45) { asleep = true; if (!timers.length || bodies.length >= 6) release(); return; }
     raf = requestAnimationFrame(frame);
   }
   function wake() {
@@ -663,10 +763,16 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     paper = cs.getPropertyValue('--paper').trim() || '#fff';
     darkInk = paper === '#000000' || paper === '#000';
   }
-  function baseRadius() {
-    var r = Math.min((world.homeR - world.homeL) * 0.28, world.floor * 0.28);
-    return Math.max(52, Math.min(170, r));
+  var WORD = ['T', 'R', 'O', 'Y', '', 'W', 'U'], GAP = 0.16, SPACE = 0.3;
+  // how wide the word is, in letter units, and how many pixels one unit gets in the room there is
+  function wordWidth() {
+    var t = -GAP;
+    WORD.forEach(function (k) { if (k) { var bx = sim.shape(k); t += bx.maxx - bx.minx + GAP; } else t += SPACE; });
+    return t;
   }
+  function letterUnit() { return Math.max(30, Math.min((world.homeR - world.homeL) * 0.96 / wordWidth(), world.floor * 0.3 / 1.3, 130)); }
+  // added objects are sized to sit beside the letters, not crush them
+  function baseRadius() { return letterUnit() * 1.5; }
   function measure() {
     var sr = stage.getBoundingClientRect(), hr = space.getBoundingClientRect();
     W = sr.width; HH = sr.height;
@@ -676,11 +782,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     var pw = Math.round(W * dpr), ph = Math.round(HH * dpr);
     if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
-    if (baseRadius() > 100) { fs = 10; cw = 6; ch = 11; } else { fs = 9; cw = 6; ch = 10; }
+    fs = 8; cw = 4.8; ch = 8;                       // everything here is small, so the characters are too
   }
   // scale: 1 is the big donut. where: 0..1 across the toy corner, or left out for anywhere.
   function spawn(kind, scale, where, resting) {
-    var base = baseRadius(), R = Math.max(base * scale, Math.min(base, 40));
+    var base = baseRadius(), R = Math.max(base * scale, 20);
     var room = Math.max(0, world.homeR - world.homeL - 2 * R - 12);
     var x = world.homeL + R + 6 + room * (where === undefined ? Math.random() : where);
     var b = sim.add(kind, x, resting ? world.floor - R * 1.3 : -R * 1.3 - 12, R, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 3);
@@ -688,16 +794,27 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     return b;
   }
   function settle() { for (var i = 0; i < 600 && sim.step() > 2; i++) {} }
-  // the opening: a donut, then a ball and a star dropped onto it
+  // the opening: the six letters of the name drop in, left to right, and stand in a row
   function start() {
     while (timers.length) clearTimeout(timers.pop());
     bodies.length = 0; world.held = null; made = 0;
-    spawn('donut', 1, 0.7, reduce);
-    if (reduce) { spawn('ball', 0.46, 0, true); spawn('star', 0.4, 1, true); settle(); draw(); return; }
-    timers.push(setTimeout(function () { spawn('ball', 0.46, 0.05); wake(); }, 500));
-    timers.push(setTimeout(function () { spawn('star', 0.4, 0.8); wake(); }, 950));
-    wake();
+    var word = WORD, gap = GAP, space = SPACE, boxes = {}, total = wordWidth(), unit = letterUnit(), x;
+    word.forEach(function (k) { if (k) boxes[k] = sim.shape(k); });
+    x = world.homeL + (world.homeR - world.homeL - total * unit) / 2;
+    word.forEach(function (k, n) {
+      if (!k) { x += space * unit; return; }
+      var bx = boxes[k], cx = x - bx.minx * unit;
+      x += (bx.maxx - bx.minx + gap) * unit;
+      function drop() {
+        var b = sim.add(k, cx, reduce ? world.floor - bx.maxy * unit - 1 : -bx.maxy * unit - 10, unit, 0, 0);
+        b.slot = cx;
+        if (reduce) b.entered = true; else wake();
+      }
+      if (reduce) drop(); else timers.push(setTimeout(drop, 140 * n));
+    });
+    if (reduce) { settle(); release(); draw(); } else wake();
   }
+  function release() { for (var i = 0; i < bodies.length; i++) bodies[i].slot = null; }
 
   /* ---------- pointer: grab, drag, throw ---------- */
   var pointerId = null, swallowClick = false;
@@ -713,6 +830,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     e.preventDefault();
     swallowClick = true;
     pointerId = e.pointerId;
+    b.slot = null;
     sim.grab(b, p.x, p.y);
     root.classList.add('grabbing');
     try { root.setPointerCapture(pointerId); } catch (err) {}
@@ -745,8 +863,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   var floatBtn = document.getElementById('toy-float');
   Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function (btn) {
     btn.addEventListener('click', function () {
-      if (bodies.length >= MAX) {                         // full: the oldest one makes room
-        for (var i = 0; i < bodies.length; i++) if (bodies[i] !== world.held) { sim.remove(bodies[i]); break; }
+      if (bodies.length >= MAX) {                         // full: the oldest added thing makes room, letters last
+        var i, old = null;
+        for (i = 0; i < bodies.length && !old; i++) if (bodies[i] !== world.held && !bodies[i].puffy) old = bodies[i];
+        for (i = 0; i < bodies.length && !old; i++) if (bodies[i] !== world.held) old = bodies[i];
+        if (old) sim.remove(old);
       }
       spawn(btn.getAttribute('data-add'), SIZES[made++ % SIZES.length]);
       wake();
@@ -755,6 +876,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   floatBtn.addEventListener('click', function () {
     var off = world.g > 0, i, k, b;
     world.g = off ? 0 : 2600;
+    release();
     floatBtn.setAttribute('aria-pressed', String(off));
     floatBtn.textContent = off ? 'Drop' : 'Float';
     if (off) for (i = 0; i < bodies.length; i++) {      // a small push so they lift off
@@ -795,7 +917,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   window.addEventListener('scroll', function () { measure(); if (asleep) draw(); wake(); }, { passive: true });
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { colours(); draw(); });
   new MutationObserver(function () { colours(); draw(); }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
-  if (document.fonts && document.fonts.load) document.fonts.load('800 10px "JetBrains Mono"').then(draw);
+  if (document.fonts && document.fonts.load) document.fonts.load('800 8px "JetBrains Mono"').then(draw);
 })();
 </script>
 <!-- visitor counts, no cookies: https://troywu.goatcounter.com -->
