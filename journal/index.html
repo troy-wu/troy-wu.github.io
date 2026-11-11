@@ -296,8 +296,7 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
 })();
 </script>
-<!-- visitor counts, no cookies: https://troywu.goatcounter.com (each entry is counted as its own page) -->
-<script>window.goatcounter = { path: function (p) { var q = new URLSearchParams(location.search).get('p'); return q ? p + '?p=' + q : p; } };</script>
+<!-- visitor counts, no cookies: https://troywu.goatcounter.com (the ?p= part of the address is kept, so each entry is counted as its own page) -->
 <script data-goatcounter="https://troywu.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
