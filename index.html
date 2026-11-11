@@ -249,7 +249,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
 </div>
 
 <script>
-/* Soft-body toys drawn in characters, after Andy Sloane's donut.c. The page opens with the letters of the name.
+/* Soft-body toys drawn in characters, after Andy Sloane's donut.c. The page opens with T, R, O, Y and a big donut.
    Each object is two rings of particles held together with position-based
    dynamics: distance, area and shape-matching constraints. No libraries. */
 (function () {
@@ -358,7 +358,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         far = Math.max(far, Math.hypot(b.qx[i], b.qy[i]));
       }
       b.R = far; b.rmax = far;
-      b.ks = K_SHAPE * Math.min(5, Math.max(1, Math.pow(150 / far, 1.5)));   // small things hold their shape as well as big ones
+      b.ks = K_SHAPE * Math.min(5, Math.max(1, Math.pow(150 / far, 1.5))) * (K.puffy ? 1.5 : 1);   // small things hold their shape as well as big ones
       b.w = 100 / far;                  // lighter when smaller, so big things shove small things
       for (i = 0; i < P; i++) {
         b.x[i] = b.px[i] = cx + b.qx[i]; b.y[i] = b.py[i] = cy + b.qy[i];
@@ -456,44 +456,50 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       }
     }
 
-    function inside(b, px, py) {
+    // is the point inside one ring of b? off = 0 for the outline, N for the inner ring
+    function within(b, off, px, py) {
       var x = b.x, y = b.y, i, j, hit = false;
-      for (i = 0, j = N - 1; i < N; j = i++) {
+      for (i = off, j = off + N - 1; i < off + N; j = i++) {
         if ((y[i] > py) !== (y[j] > py) && px < (x[j] - x[i]) * (py - y[i]) / (y[j] - y[i]) + x[i]) hit = !hit;
       }
       return hit;
     }
+    function inside(b, px, py) { return within(b, 0, px, py); }
 
-    // push a's outline particles out of b's outline, and b's edge the other way
+    // push a's particles out of b's body, and b's edge the other way. A hole is open space:
+    // something small can sit inside a donut, held in by the inner edge.
     function collide(a, b) {
       var dx = a.cx - b.cx, dy = a.cy - b.cy, reach = a.rmax + b.rmax;
       if (dx * dx + dy * dy > reach * reach) return;
-      var wa = a.w, wb = b.w, i, j, k, t, ex, ey, qx, qy, d2, best, bj, bt, bqx, bqy, s, mx, my, f;
-      for (i = 0; i < N; i++) {
+      var wa = a.w, wb = b.w, count = a.hole ? P : N, rings = b.hole ? 2 : 1, i, j, k, o, g, t, ex, ey, qx, qy, d2, best, bj, bk, bt, bqx, bqy, s, mx, my, f;
+      for (i = 0; i < count; i++) {
         var px = a.x[i], py = a.y[i];
         dx = px - b.cx; dy = py - b.cy;
-        if (dx * dx + dy * dy > b.rmax * b.rmax || !inside(b, px, py)) continue;
+        if (dx * dx + dy * dy > b.rmax * b.rmax || !within(b, 0, px, py)) continue;
+        if (b.hole && within(b, N, px, py)) continue;
         a.touch = b.touch = true;
         best = Infinity;
-        for (j = 0; j < N; j++) {
-          k = (j + 1) % N;
-          ex = b.x[k] - b.x[j]; ey = b.y[k] - b.y[j];
-          t = ((px - b.x[j]) * ex + (py - b.y[j]) * ey) / (ex * ex + ey * ey || 1e-9);
-          t = t < 0 ? 0 : t > 1 ? 1 : t;
-          qx = b.x[j] + ex * t; qy = b.y[j] + ey * t;
-          d2 = (qx - px) * (qx - px) + (qy - py) * (qy - py);
-          if (d2 < best) { best = d2; bj = j; bt = t; bqx = qx; bqy = qy; }
+        for (g = 0; g < rings; g++) {
+          o = g * N;
+          for (j = 0; j < N; j++) {
+            k = (j + 1) % N;
+            ex = b.x[o + k] - b.x[o + j]; ey = b.y[o + k] - b.y[o + j];
+            t = ((px - b.x[o + j]) * ex + (py - b.y[o + j]) * ey) / (ex * ex + ey * ey || 1e-9);
+            t = t < 0 ? 0 : t > 1 ? 1 : t;
+            qx = b.x[o + j] + ex * t; qy = b.y[o + j] + ey * t;
+            d2 = (qx - px) * (qx - px) + (qy - py) * (qy - py);
+            if (d2 < best) { best = d2; bj = o + j; bk = o + k; bt = t; bqx = qx; bqy = qy; }
+          }
         }
-        k = (bj + 1) % N;
         dx = bqx - px; dy = bqy - py;
         s = wa + wb * ((1 - bt) * (1 - bt) + bt * bt);
         a.x[i] += dx * wa / s; a.y[i] += dy * wa / s;
         b.x[bj] -= dx * wb * (1 - bt) / s; b.y[bj] -= dy * wb * (1 - bt) / s;
-        b.x[k] -= dx * wb * bt / s; b.y[k] -= dy * wb * bt / s;
+        b.x[bk] -= dx * wb * bt / s; b.y[bk] -= dy * wb * bt / s;
         // a little grip where they touch, so things can sit on each other
-        mx = (a.x[i] - a.px[i]) - ((b.x[bj] - b.px[bj]) * (1 - bt) + (b.x[k] - b.px[k]) * bt);
-        my = (a.y[i] - a.py[i]) - ((b.y[bj] - b.py[bj]) * (1 - bt) + (b.y[k] - b.py[k]) * bt);
-        ex = b.x[k] - b.x[bj]; ey = b.y[k] - b.y[bj]; d2 = ex * ex + ey * ey || 1e-9;
+        mx = (a.x[i] - a.px[i]) - ((b.x[bj] - b.px[bj]) * (1 - bt) + (b.x[bk] - b.px[bk]) * bt);
+        my = (a.y[i] - a.py[i]) - ((b.y[bj] - b.py[bj]) * (1 - bt) + (b.y[bk] - b.py[bk]) * bt);
+        ex = b.x[bk] - b.x[bj]; ey = b.y[bk] - b.y[bj]; d2 = ex * ex + ey * ey || 1e-9;
         f = F_BODY * (mx * ex + my * ey) / d2 * wa / (wa + wb);
         a.x[i] -= f * ex; a.y[i] -= f * ey;
       }
@@ -748,7 +754,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (n === 3) acc = 0;
     draw();
     if (n) still = (v < 2.5 && !world.held) ? still + n : 0;
-    if (still > 45) { asleep = true; if (!timers.length || bodies.length >= 6) release(); return; }
+    if (still > 45) { asleep = true; if (!pending) release(); return; }
     raf = requestAnimationFrame(frame);
   }
   function wake() {
@@ -763,16 +769,16 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     paper = cs.getPropertyValue('--paper').trim() || '#fff';
     darkInk = paper === '#000000' || paper === '#000';
   }
-  var WORD = ['T', 'R', 'O', 'Y', '', 'W', 'U'], GAP = 0.16, SPACE = 0.3;
-  // how wide the word is, in letter units, and how many pixels one unit gets in the room there is
+  var WORD = ['T', 'R', 'O', 'Y'], GAP = 0.16, pending = 0, big = 0;
+  // how wide the word is, in letter units, and how many pixels one unit gets: the letters take the left of the corner
   function wordWidth() {
     var t = -GAP;
-    WORD.forEach(function (k) { if (k) { var bx = sim.shape(k); t += bx.maxx - bx.minx + GAP; } else t += SPACE; });
+    WORD.forEach(function (k) { var bx = sim.shape(k); t += bx.maxx - bx.minx + GAP; });
     return t;
   }
-  function letterUnit() { return Math.max(30, Math.min((world.homeR - world.homeL) * 0.96 / wordWidth(), world.floor * 0.3 / 1.3, 130)); }
-  // added objects are sized to sit beside the letters, not crush them
-  function baseRadius() { return letterUnit() * 1.5; }
+  function letterUnit() { return Math.max(30, Math.min((world.homeR - world.homeL) * 0.68 / wordWidth(), world.floor * 0.34 / 1.3, 150)); }
+  // the big donut takes the rest of the corner; everything else you add is sized against it
+  function bigRadius() { return big || Math.max(40, Math.min((world.homeR - world.homeL) * 0.185, world.floor * 0.24, 150)); }
   function measure() {
     var sr = stage.getBoundingClientRect(), hr = space.getBoundingClientRect();
     W = sr.width; HH = sr.height;
@@ -784,33 +790,43 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
     fs = 8; cw = 4.8; ch = 8;                       // everything here is small, so the characters are too
   }
-  // scale: 1 is the big donut. where: 0..1 across the toy corner, or left out for anywhere.
-  function spawn(kind, scale, where, resting) {
-    var base = baseRadius(), R = Math.max(base * scale, 20);
-    var room = Math.max(0, world.homeR - world.homeL - 2 * R - 12);
-    var x = world.homeL + R + 6 + room * (where === undefined ? Math.random() : where);
-    var b = sim.add(kind, x, resting ? world.floor - R * 1.3 : -R * 1.3 - 12, R, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 3);
+  // drop one object of radius R into the corner; x is its centre, or left out for anywhere
+  function spawn(kind, R, x, resting) {
+    var lo = world.homeL + R + 6, hi = Math.max(lo, world.homeR - R - 6);
+    if (x === undefined) x = lo + (hi - lo) * Math.random();
+    var b = sim.add(kind, x, resting ? world.floor - R * 1.3 : -R * 1.3 - 12, R, (Math.random() - 0.5) * 80, (Math.random() - 0.5) * 2);
     if (resting) b.entered = true;
     return b;
   }
   function settle() { for (var i = 0; i < 600 && sim.step() > 2; i++) {} }
-  // the opening: the six letters of the name drop in, left to right, and stand in a row
+  // the opening: T, R, O, Y drop in and stand in a row; the big donut lands beside them with a ball riding in its hole;
+  // a small star comes down last and settles in the fork of the Y
   function start() {
     while (timers.length) clearTimeout(timers.pop());
-    bodies.length = 0; world.held = null; made = 0;
-    var word = WORD, gap = GAP, space = SPACE, boxes = {}, total = wordWidth(), unit = letterUnit(), x;
-    word.forEach(function (k) { if (k) boxes[k] = sim.shape(k); });
-    x = world.homeL + (world.homeR - world.homeL - total * unit) / 2;
-    word.forEach(function (k, n) {
-      if (!k) { x += space * unit; return; }
-      var bx = boxes[k], cx = x - bx.minx * unit;
-      x += (bx.maxx - bx.minx + gap) * unit;
-      function drop() {
+    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0;
+    var unit = letterUnit(), x = world.homeL + 4, slots = {}, R, dx;
+    function later(ms, fn) {
+      if (reduce) return fn();
+      pending++;
+      timers.push(setTimeout(function () { pending--; fn(); wake(); }, ms));
+    }
+    WORD.forEach(function (k, n) {
+      var bx = sim.shape(k), cx = x - bx.minx * unit;
+      slots[k] = cx; x += (bx.maxx - bx.minx + GAP) * unit;
+      later(140 * n, function () {
         var b = sim.add(k, cx, reduce ? world.floor - bx.maxy * unit - 1 : -bx.maxy * unit - 10, unit, 0, 0);
-        b.slot = cx;
-        if (reduce) b.entered = true; else wake();
-      }
-      if (reduce) drop(); else timers.push(setTimeout(drop, 140 * n));
+        b.slot = cx; if (reduce) b.entered = true;
+      });
+    });
+    R = Math.max(34, Math.min(bigRadius(), (world.w - x - 6) / 2));     // the donut gets whatever room is left beside the word
+    big = R; dx = Math.min(x + R + 4, world.w - R - 2);
+    later(1100, function () {
+      var top = reduce ? world.floor - R - 1 : -R - 12, d = sim.add('donut', dx, top, R, 0, 0), b = sim.add('ball', dx, top + R * 0.08, R * 0.27, 0, 0);
+      if (reduce) d.entered = b.entered = true;
+    });
+    later(2000, function () {
+      var r = unit * 0.36, st = sim.add('star', slots.Y, reduce ? world.floor - 1.45 * unit - r : -r * 1.3 - 12, r, 0, 0);
+      if (reduce) st.entered = true;
     });
     if (reduce) { settle(); release(); draw(); } else wake();
   }
@@ -869,7 +885,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         for (i = 0; i < bodies.length && !old; i++) if (bodies[i] !== world.held) old = bodies[i];
         if (old) sim.remove(old);
       }
-      spawn(btn.getAttribute('data-add'), SIZES[made++ % SIZES.length]);
+      var kind = btn.getAttribute('data-add');            // the donut button always drops the big one
+      spawn(kind, kind === 'donut' ? bigRadius() : Math.max(20, bigRadius() * 1.15 * SIZES[made++ % SIZES.length]));
       wake();
     });
   });
