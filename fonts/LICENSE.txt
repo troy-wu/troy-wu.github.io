@@ -1,0 +1,7 @@
+Fonts in this folder are licensed under the SIL Open Font License 1.1.
+
+Doto - Copyright The Doto Project Authors (https://github.com/oliverlalan/Doto)
+Instrument Sans - Copyright The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans)
+JetBrains Mono (subset to a few ASCII glyphs) - Copyright The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+License text: https://openfontlicense.org
