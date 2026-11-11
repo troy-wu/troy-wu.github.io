@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Journal – Troy Wu</title>
-<meta name="description" content="Troy Wu's journal: experiences and passing thoughts, written down.">
+<meta name="description" content="Troy Wu's journal: a bit more about me, and things I've written down.">
 <meta property="og:title" content="Journal – Troy Wu">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -18,7 +18,8 @@ if (new URLSearchParams(location.search).get('p')) document.documentElement.clas
 </script>
 <style>
 /* Layout: one quiet reading column. The list of entries and a single entry share this page;
-   ?p=the-title picks an entry. All the writing lives in entries.md, next to this file. */
+   ?p=the-title picks an entry. All the writing lives in entries.md, next to this file:
+   whatever sits above the first title there is the note about Troy at the top of the list. */
 :root {
   --paper: #ffffff;
   --ink: #000000;
@@ -62,9 +63,10 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 
 /* ---------- the list ---------- */
 .mast { font: 900 clamp(4rem, 13vw, 6.2rem)/0.8 var(--font-dot); letter-spacing: -0.04em; margin-left: -0.05em; }
-.about { color: var(--mute); margin-top: 1.1rem; max-width: 30rem; }
+.about { margin-top: 1.6rem; max-width: 34rem; font-size: 1.1rem; line-height: 1.62; }
+.about > * + * { margin-top: 0.85em; }
 .reading .front { display: none; }
-.entries { margin-top: clamp(2rem, 6vh, 3.5rem); display: grid; gap: 2.2rem; }
+.entries { margin-top: clamp(2rem, 6vh, 3.2rem); padding-top: 2rem; border-top: 2px solid var(--ink); display: grid; gap: 2.2rem; }
 .entries a { display: grid; gap: 0.3rem; text-decoration: none; }
 .entries a:hover { background: none; color: inherit; }
 .entries a:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em; text-underline-offset: 0.18em; }
@@ -113,7 +115,7 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 <main class="column">
   <div class="front">
     <h1 class="mast">Journal</h1>
-    <p class="about">Experiences and passing thoughts, written down.</p>
+    <div class="about" id="about"></div>
   </div>
   <div id="view"></div>
   <noscript><p class="note">This page needs JavaScript to lay out the entries. You can read them as plain text in <a href="entries.md">entries.md</a>.</p></noscript>
@@ -125,18 +127,19 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
   'use strict';
   var view = document.getElementById('view');
 
-  /* entries.md → [{ title, date, body, slug }], in the order written */
+  /* entries.md → { about, entries: [{ title, date, body, slug }] }, in the order written */
   /*parse-start*/
   function parseEntries(text) {
     var lines = text.replace(/\r\n?/g, '\n').replace(/^\s*<!--[\s\S]*?-->/, '').split('\n');
-    var entries = [], cur = null, fence = false, seen = {}, i, m;
+    var entries = [], about = [], cur = null, fence = false, seen = {}, i, m;
     for (i = 0; i < lines.length; i++) {
       if (/^\s*(```|~~~)/.test(lines[i])) fence = !fence;
       m = fence ? null : /^#\s+(.+?)\s*#*\s*$/.exec(lines[i]);
       if (m) { cur = { title: m[1], date: '', lines: [] }; entries.push(cur); }
       else if (cur) cur.lines.push(lines[i]);
+      else about.push(lines[i]);
     }
-    return entries.filter(function (e) { return !/^draft\b/i.test(e.title); }).map(function (e) {
+    entries = entries.filter(function (e) { return !/^draft\b/i.test(e.title); }).map(function (e) {
       var l = e.lines, k = 0;
       while (k < l.length && !l[k].trim()) k++;
       // the first line under the title is the date, unless it is clearly a sentence
@@ -145,6 +148,7 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
       if (seen[slug]) slug += '-' + (++seen[slug]); else seen[slug] = 1;
       return { title: e.title, date: e.date, body: l.slice(k).join('\n').trim(), slug: slug };
     });
+    return { about: about.join('\n').trim(), entries: entries };
   }
   /*parse-end*/
 
@@ -193,8 +197,8 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
     if (!r.ok) throw new Error(r.status);
     return r.text();
   }).then(function (text) {
-    var entries = parseEntries(text), i;
-    if (!want) return showList(entries);
+    var parsed = parseEntries(text), entries = parsed.entries, i;
+    if (!want) { if (parsed.about) document.getElementById('about').innerHTML = html(parsed.about); return showList(entries); }
     for (i = 0; i < entries.length; i++) if (entries[i].slug === want) return showEntry(entries, i);
     var p = el('p', 'note', 'That entry is not here. It may have been renamed. ');
     var a = el('a', '', 'See all entries'); a.href = './'; p.appendChild(a); view.appendChild(p);
@@ -203,5 +207,8 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
   });
 })();
 </script>
+<!-- visitor counts, no cookies: https://troywu.goatcounter.com (each entry is counted as its own page) -->
+<script>window.goatcounter = { path: function (p) { var q = new URLSearchParams(location.search).get('p'); return q ? p + '?p=' + q : p; } };</script>
+<script data-goatcounter="https://troywu.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>

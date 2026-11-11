@@ -1,6 +1,7 @@
 <!--
 HOW TO WRITE HERE (this note never shows on the site)
 
+- Whatever you write above the first "# " line is the note about you at the top of the journal.
 - A line starting with "# " begins a new entry. That line is the title.
 - The line right under the title is the date, written however you like.
 - Everything after that is the entry, until the next "# " line.
@@ -16,6 +17,12 @@ Things you can use inside an entry:
 - ![what the picture shows](images/name.jpg) for a picture. Put the file in journal/images/.
   A line of *italic* straight under a picture becomes its caption.
 -->
+
+The front page covers my work. This page is more about me.
+
+I love to travel, and I vlog on my YouTube channel. I love meeting new people, exploring new cultures, and testing my mind with different perspectives. I love hanging out with great people who accept each other and bounce ideas around with no judgment.
+
+I love novelty in general: moving to new cities, traveling, doing things for the first time, and creating experiences with others that feel fresh and keep life refreshed. I'm also a very emotional person.
 
 # A Semester at Tsinghua: Four Months in Beijing
 June 2025
