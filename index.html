@@ -81,6 +81,8 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 .links a { padding: 0.1rem 0.15rem; }
 .links .resume { background: var(--ink); color: var(--paper); text-decoration: none; padding: 0.1rem 0.6rem; font-weight: 600; }
 .links .resume:hover { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.theme { align-self: center; padding: 0.15rem; border: 0; background: none; color: inherit; line-height: 0; cursor: pointer; }
+.theme:hover { background: var(--ink); color: var(--paper); }
 
 /* ---------- the sheet ---------- */
 .sheet { grid-column: 1; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
@@ -173,6 +175,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       <a href="https://linkedin.com/in/troy-wu">LinkedIn</a>
       <a href="journal/">More about me</a>
       <a href="mailto:troywu5@gmail.com">troywu5@gmail.com</a>
+      <button type="button" class="theme" id="theme-toggle" aria-label="Switch between light and dark mode" title="Light or dark mode"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </nav>
   </header>
 
@@ -233,7 +236,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   <aside class="home" aria-label="Soft objects to play with">
     <div class="floor-space"></div>
     <div class="shelf">
-      <p class="hint"><span>Fling things at the letters. Knock one out of place to score.</span><span class="score" aria-live="polite">Score <b id="score">0</b><span class="best">Best <b id="best">0</b></span></span></p>
+      <p class="hint"><span>Toss the ball through the hoop. How many in a row?</span><span class="score" aria-live="polite">Streak <b id="score">0</b><span class="best">Best <b id="best">0</b></span></span></p>
       <div class="toys" role="group" aria-label="Add an object">
         <span class="toys-label">Add</span>
         <button type="button" data-add="donut">Donut</button>
@@ -243,7 +246,6 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       </div>
       <div class="toys">
         <button type="button" id="toy-float" aria-pressed="false">Float</button>
-        <button type="button" id="toy-invert">Invert</button>
         <button type="button" id="toy-reset">Reset</button>
       </div>
     </div>
@@ -266,7 +268,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     var A_EDGE = 3, A_SPOKE = 30, A_SHEAR = 30, A_BEND = 90;  // compliances (0 = rigid)
     var C_DEFORM = 7.5, C_AIR = 0.1, C_ROLL = 1.4;            // damping (1/s)
     var F_FLOOR = 0.22, F_WALL = 0.04, F_BODY = 0.12;
-    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, FENCE = 0, K_UP = 450, SLOT_K = 30, SLOT_MAX = 1100, HOVER_K = 45;
+    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, FENCE = 0, K_UP = 450, SLOT_K = 30, SLOT_MAX = 1100;
 
     /* Outlines at unit size. inner: where the second ring sits. hole: the inner
        ring is an edge you can see through. dome: how rounded the top looks. */
@@ -333,7 +335,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     }
 
     var bodies = [];
-    var world = { w: 800, h: 600, floor: 600, homeL: 0, homeR: 800, g: 2600, held: null, tx: 0, ty: 0, sx: 0, sy: 0 };
+    var world = { w: 800, h: 600, floor: 600, homeL: 0, homeR: 800, g: 2600, held: null, tx: 0, ty: 0, sx: 0, sy: 0, pegs: [] };
 
     function area(b) {
       var A = 0, i, j, x = b.x, y = b.y;
@@ -352,7 +354,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         x: new Float64Array(P), y: new Float64Array(P), px: new Float64Array(P), py: new Float64Array(P),
         vx: new Float64Array(P), vy: new Float64Array(P), qx: new Float64Array(P), qy: new Float64Array(P),
         gw: new Float64Array(P), gx: new Float64Array(P), gy: new Float64Array(P), gs: 1, ks: K_SHAPE, ox: 0, oy: 0, ci: [], cj: [], cl: [], ca: [],
-        A0: 0, cx: cx, cy: cy, rmax: size, sp: 1e3, th: 0, slot: null, hover: null, entered: false, down: false, touch: false
+        A0: 0, cx: cx, cy: cy, rmax: size, sp: 1e3, th: 0, slot: null, live: false, entered: false, down: false, touch: false
       };
       for (i = 0; i < N; i++) {
         p = K.at(i);
@@ -413,8 +415,6 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         dx = world.homeL - FENCE - (b.cx - b.R);
         if (dx > 0 && dx < 140 && b.sp < 300) ax += Math.min(14000, 120 * dx);
       }
-      // a hovering thing ignores gravity and eases to its spot in the air
-      if (b.hover && world.held !== b) { ax += HOVER_K * (b.hover[0] - b.cx); ay = HOVER_K * (b.hover[1] - b.cy); }
       // a letter drifts back to its place in the word whenever it is let go, so the name re-forms after every throw
       if (b.slot !== null && world.g > 0 && world.held !== b) ax += Math.max(-SLOT_MAX, Math.min(SLOT_MAX, SLOT_K * (b.slot - b.cx)));
       // letters are bottom-heavy: let go of one and it stands itself back up, so the name stays readable
@@ -472,20 +472,16 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     }
     function inside(b, px, py) { return within(b, 0, px, py); }
 
-    // push a's particles out of b's body, and b's edge the other way. A hole is open space:
-    // something small can sit inside a donut, held in by the inner edge.
+    // push a's outline particles out of b's outline, and b's edge the other way (a hole counts as solid)
     function collide(a, b) {
       var dx = a.cx - b.cx, dy = a.cy - b.cy, reach = a.rmax + b.rmax;
       if (dx * dx + dy * dy > reach * reach) return;
-      var wa = a.w, wb = b.w, count = a.hole ? P : N, rings = b.hole ? 2 : 1, i, j, k, o, g, t, ex, ey, qx, qy, d2, best, bj, bk, bt, bqx, bqy, s, mx, my, f;
+      var wa = a.w, wb = b.w, count = N, rings = 1, i, j, k, o, g, t, ex, ey, qx, qy, d2, best, bj, bk, bt, bqx, bqy, s, mx, my, f;
       for (i = 0; i < count; i++) {
         var px = a.x[i], py = a.y[i];
         dx = px - b.cx; dy = py - b.cy;
         if (dx * dx + dy * dy > b.rmax * b.rmax || !within(b, 0, px, py)) continue;
-        if (b.hole && within(b, N, px, py)) continue;
         a.touch = b.touch = true;
-        if (a.hover && !b.hover) a.hover = null;         // knocked: it falls like anything else
-        if (b.hover && !a.hover) b.hover = null;
         best = Infinity;
         for (g = 0; g < rings; g++) {
           o = g * N;
@@ -511,6 +507,31 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         f = F_BODY * (mx * ex + my * ey) / d2 * wa / (wa + wb);
         a.x[i] -= f * ex; a.y[i] -= f * ey;
       }
+    }
+
+    // a fixed point in the world, like the front of a hoop's rim: bodies bounce off it
+    function peg(b, q) {
+      var dx = q.x - b.cx, dy = q.y - b.cy, reach = b.rmax + q.r;
+      if (!b.live || dx * dx + dy * dy > reach * reach) return;
+      var rings = 1, g, o, j, k, t, ex, ey, ux, uy, d2, best = Infinity, bj = 0, bk = 0, bt = 0, bx = 0, by = 0, d, m, s;
+      var ins = within(b, 0, q.x, q.y);
+      for (g = 0; g < rings; g++) {
+        o = g * N;
+        for (j = 0; j < N; j++) {
+          k = (j + 1) % N;
+          ex = b.x[o + k] - b.x[o + j]; ey = b.y[o + k] - b.y[o + j];
+          t = ((q.x - b.x[o + j]) * ex + (q.y - b.y[o + j]) * ey) / (ex * ex + ey * ey || 1e-9);
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          ux = b.x[o + j] + ex * t - q.x; uy = b.y[o + j] + ey * t - q.y; d2 = ux * ux + uy * uy;
+          if (d2 < best) { best = d2; bj = o + j; bk = o + k; bt = t; bx = ux; by = uy; }
+        }
+      }
+      d = Math.sqrt(best) || 1e-6;
+      if (ins) m = -(1 + q.r / d); else if (d < q.r) m = (q.r - d) / d; else return;   // move the nearest edge off the peg
+      s = (1 - bt) * (1 - bt) + bt * bt;
+      b.x[bj] += bx * m * (1 - bt) / s; b.y[bj] += by * m * (1 - bt) / s;
+      b.x[bk] += bx * m * bt / s; b.y[bk] += by * m * bt / s;
+      b.touch = true;
     }
 
     function walls(b) {
@@ -542,7 +563,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       b.rmax = Math.sqrt(far) + 2;
       // resting contact: rolling resistance, and more of it once it is barely moving, so things come to rest
       var sp = b.sp = Math.sqrt(mx * mx + my * my), c = C_AIR;
-      if (b.hover) c = 10; else if (world.g <= 0) c = 0.45; else if (b.down || b.touch) c = C_ROLL + (sp < 60 ? 9 * (1 - sp / 60) : 0);
+      if (world.g <= 0) c = 0.45; else if (b.down || b.touch) c = C_ROLL + (sp < 60 ? 9 * (1 - sp / 60) : 0);
       var w = L / (I || 1), kd = Math.exp(-C_DEFORM * H), ka = Math.exp(-c * H);
       for (i = 0; i < P; i++) {
         rx = x[i] - b.cx; ry = y[i] - b.cy;
@@ -564,7 +585,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         for (i = 0; i < n; i++) integrate(bodies[i]);
         for (i = 0; i < n; i++) solve(bodies[i]);
         for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) { collide(bodies[i], bodies[j]); collide(bodies[j], bodies[i]); }
-        for (i = 0; i < n; i++) walls(bodies[i]);
+        for (i = 0; i < n; i++) { for (j = 0; j < world.pegs.length; j++) peg(bodies[i], world.pegs[j]); walls(bodies[i]); if (bodies[i].down || bodies[i].touch) bodies[i].live = true; }
         for (i = 0; i < n; i++) { v = finish(bodies[i]); if (s === SUB - 1 && v > m) m = v; }
       }
       return Math.sqrt(m);
@@ -744,6 +765,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     ctx.clearRect(0, 0, W, HH);
     ctx.font = FONT.replace('SIZE', fs);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    drawHoop();
+    ctx.font = FONT.replace('SIZE', fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
     if (pops.length) {                             // "+10" rising and fading where a letter was knocked
       var now = performance.now(), k, age;
@@ -758,27 +781,51 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     }
   }
 
-  /* ---------- the game: fling something at the letters; each one knocked out of place scores ---------- */
-  var pops = [], score = 0, best = 0, streak = 0, thrown = null, thrownAt = -1e9;
+  /* ---------- the game: toss a small object through the hoop on the right wall; count how many in a row ---------- */
+  var pops = [], streak = 0, best = 0, shot = null, hoop = { x0: 0, x1: 0, y: 0, open: 0 }, swish = -1e9;
   var scoreEl = document.getElementById('score'), bestEl = document.getElementById('best');
-  try { best = parseInt(localStorage.getItem('best'), 10) || 0; } catch (err) {}
+  try { best = parseInt(localStorage.getItem('bestStreak'), 10) || 0; } catch (err) {}
   bestEl.textContent = best;
+  // the hoop hangs off the right wall: the wall is the backboard, the rim's front end is a fixed peg
+  function placeHoop() {
+    var r = bigRadius() * 0.3, up = Math.max(2 * bigRadius() + r * 2.2, Math.min(world.floor * 0.5, world.floor - 110));
+    hoop.open = r * 3; hoop.x1 = world.w; hoop.x0 = world.w - hoop.open; hoop.y = Math.max(70, world.floor - up);
+    world.pegs.length = 0; world.pegs.push({ x: hoop.x0, y: hoop.y, r: 3.5 });
+  }
+  function drawHoop() {
+    var k, n = 5, kick = Math.max(0, 1 - (performance.now() - swish) / 350), drop = hoop.open * (0.62 + 0.22 * kick), x;
+    ctx.strokeStyle = ink; ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.45; ctx.lineWidth = 1; ctx.beginPath();                       // the net
+    for (k = 0; k <= n; k++) {
+      x = hoop.x0 + hoop.open * k / n;
+      ctx.moveTo(x, hoop.y); ctx.lineTo(hoop.x0 + hoop.open * (0.18 + 0.64 * k / n), hoop.y + drop);
+    }
+    for (k = 1; k <= 2; k++) { ctx.moveTo(hoop.x0 + hoop.open * 0.06 * k, hoop.y + drop * k / 3); ctx.lineTo(hoop.x1 - hoop.open * 0.06 * k, hoop.y + drop * k / 3); }
+    ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.beginPath();                          // the rim and the backboard
+    ctx.moveTo(hoop.x0, hoop.y); ctx.lineTo(hoop.x1, hoop.y);
+    ctx.moveTo(hoop.x1 - 2, hoop.y - hoop.open * 0.95); ctx.lineTo(hoop.x1 - 2, hoop.y + 10);
+    ctx.stroke();
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(hoop.x0, hoop.y, 3.5, 0, 6.2832); ctx.fill();
+  }
+  // a throw that was a real attempt and did not go in ends the run
+  function closeShot() {
+    if (shot && shot.real && !shot.made && streak) { streak = 0; scoreEl.textContent = 0; }
+    shot = null;
+  }
   function referee() {
-    var live = !world.held && performance.now() - thrownAt < 5000, i, b, off, tilt, out;
+    var i, b, now = performance.now();
     for (i = 0; i < bodies.length; i++) {
       b = bodies[i];
-      if (!b.puffy || b.slot === null) continue;
-      off = Math.hypot(b.cx - b.slot, b.cy - b.homeY); tilt = Math.abs(b.th);
-      out = off > b.s * 0.55 || tilt > 0.55;                     // shoved well out of its place, or tipped past about 30 degrees
-      if (out && !b.fallen) {
-        b.fallen = true;
-        if (live && b !== thrown) {
-          streak++; score += 10 * streak;                        // each extra letter in the same throw is worth more
-          pops.push({ x: b.cx, y: b.cy - b.s * 0.7, t: performance.now(), text: streak === WORD.length ? 'Strike! +' + 10 * streak : '+' + 10 * streak });
-          scoreEl.textContent = score;
-          if (score > best) { best = score; bestEl.textContent = best; try { localStorage.setItem('best', String(best)); } catch (err) {} }
-        }
-      } else if (!out && b.fallen && off < b.s * 0.2 && tilt < 0.2) b.fallen = false;   // back in place: it can score again
+      if (!b.puffy && b.R <= hoop.open * 0.5 && b !== world.held && b.lastY !== undefined &&
+          b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1 &&
+          shot && shot.body === b && shot.real && !shot.made) {
+        shot.made = true; streak++; swish = now;
+        pops.push({ x: (hoop.x0 + hoop.x1) / 2 - 10, y: hoop.y - 26, t: now, text: streak > 1 ? streak + ' in a row' : 'In!' });
+        scoreEl.textContent = streak;
+        if (streak > best) { best = streak; bestEl.textContent = best; try { localStorage.setItem('bestStreak', String(best)); } catch (err) {} }
+      }
+      b.lastY = b.cy;
     }
   }
 
@@ -792,7 +839,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (n) referee();
     draw();
     if (n) still = (v < 2.5 && !world.held && !pops.length) ? still + n : 0;
-    if (still > 45) { asleep = true; return; }
+    if (still > 45) { asleep = true; closeShot(); return; }
     raf = requestAnimationFrame(frame);
   }
   function wake() {
@@ -827,6 +874,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     var pw = Math.round(W * dpr), ph = Math.round(HH * dpr);
     if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
     fs = 8; cw = 4.8; ch = 8;                       // everything here is small, so the characters are too
+    placeHoop();
   }
   // drop one object of radius R into the corner; x is its centre, or left out for anywhere
   function spawn(kind, R, x, resting) {
@@ -837,11 +885,10 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     return b;
   }
   function settle() { for (var i = 0; i < 600 && sim.step() > 2; i++) {} }
-  // the opening: T, R, O, Y drop in and stand in a row; the big donut lands beside them;
-  // a ball and a star come down and stop in mid-air above
+  // the opening: T, R, O, Y drop in and stand in a row; the big donut lands beside them; then a ball and a star drop in
   function start() {
     while (timers.length) clearTimeout(timers.pop());
-    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0; thrown = null;
+    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0; shot = null;
     var unit = letterUnit(), x = world.homeL + 4, slots = {}, R, dx;
     function later(ms, fn) {
       if (reduce) return fn();
@@ -853,7 +900,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       slots[k] = cx; x += (bx.maxx - bx.minx + GAP) * unit;
       later(140 * n, function () {
         var b = sim.add(k, cx, reduce ? world.floor - bx.maxy * unit - 1 : -bx.maxy * unit - 10, unit, 0, 0);
-        b.slot = cx; b.homeY = world.floor - bx.maxy * unit; b.fallen = false; if (reduce) b.entered = true;
+        b.slot = cx; if (reduce) b.entered = true;
       });
     });
     R = Math.max(34, Math.min(bigRadius(), (world.w - x - 6) / 2));     // the donut gets whatever room is left beside the word
@@ -862,15 +909,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       var d = sim.add('donut', dx, reduce ? world.floor - R - 1 : -R - 12, R, 0, 0);
       if (reduce) d.entered = true;
     });
-    // a ball and a star hang in the air above, until something hits them or you take one
-    function hang(kind, r, hx, hy, ms) {
-      later(ms, function () {
-        var b = sim.add(kind, hx, reduce ? hy : -r * 1.3 - 12, r, 0, 0);
-        b.hover = [hx, hy]; if (reduce) b.entered = true;
-      });
-    }
-    hang('ball', R * 0.3, (slots.R + slots.O) / 2, world.floor - unit * 2.35, 1700);
-    hang('star', R * 0.27, slots.Y + unit * 0.5, world.floor - unit * 3.1, 2000);
+    later(1750, function () { var b = sim.add('ball', x + R * 0.1, reduce ? world.floor - 2.2 * R : -R * 0.5, R * 0.3, 0, 0); if (reduce) b.entered = true; });
+    later(2150, function () { var b = sim.add('star', (slots.O + slots.Y) / 2, reduce ? world.floor - 1.8 * unit : -R * 0.5, R * 0.27, 0, 0); if (reduce) b.entered = true; });
     if (reduce) { settle(); draw(); } else wake();
   }
 
@@ -888,7 +928,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     e.preventDefault();
     swallowClick = true;
     pointerId = e.pointerId;
-    thrown = b; streak = 0; b.hover = null;
+    closeShot();
     sim.grab(b, p.x, p.y);
     root.classList.add('grabbing');
     try { root.setPointerCapture(pointerId); } catch (err) {}
@@ -901,8 +941,10 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   }, true);
   function letGo(e) {
     if (e.pointerId !== pointerId) return;
+    var b = world.held;
     pointerId = null; world.held = null;
-    thrownAt = performance.now();                    // the throw is live for a few seconds: letters knocked now score
+    // letting go starts a shot; it only counts if it was let go well to the left of the hoop (no carrying it in)
+    if (b && !b.puffy && b.R <= hoop.open * 0.5) shot = { body: b, made: false, real: b.cx < hoop.x0 - hoop.open * 0.8 };
     root.classList.remove('grabbing');
     wake();
   }
@@ -945,7 +987,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     }
     wake();
   });
-  document.getElementById('toy-invert').addEventListener('click', function () {
+  document.getElementById('theme-toggle').addEventListener('click', function () {
     var next = darkInk ? 'light' : 'dark';
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('theme', next); } catch (err) {}
@@ -953,7 +995,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   });
   document.getElementById('toy-reset').addEventListener('click', function () {
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
-    score = 0; streak = 0; pops = []; thrownAt = -1e9; scoreEl.textContent = 0;
+    streak = 0; shot = null; pops = []; scoreEl.textContent = 0;
     start();
   });
 
