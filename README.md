@@ -40,4 +40,4 @@ The toys in the corner (the letters T, R, O, Y, a big donut, a ball and a star, 
 
 The employer logos are trademarks of their owners and are used only to identify where I worked.
 
-There is a small game in the corner: toss the ball (or any small object) through the hoop on the right wall and see how many you can make in a row. A shot only counts if it is let go to the left of the hoop, so it has to arc in. The best run is kept in the browser.
+There is a small game behind the "Play?" button: five free throws at a hoop on the right wall. The ball has to be let go behind the dotted line, the front of the rim is a solid obstacle, and the net moves when the ball falls through it. The best round is kept in the browser. "Stop" brings the letters and the donut back.

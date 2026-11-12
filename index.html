@@ -119,9 +119,9 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
   font-size: 0.8125rem;
 }
 .hint { color: var(--mute); width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.2rem 1rem; }
-.score { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.score { white-space: nowrap; font-variant-numeric: tabular-nums; display: flex; gap: 0.9rem; }
 .score b { color: var(--ink); font-weight: 600; }
-.best { margin-left: 0.9rem; }
+[hidden] { display: none !important; }
 .toys { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .toys-label { color: var(--mute); align-self: center; margin-right: 0.1rem; }
 .toys button {
@@ -236,17 +236,22 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   <aside class="home" aria-label="Soft objects to play with">
     <div class="floor-space"></div>
     <div class="shelf">
-      <p class="hint"><span>Toss the ball through the hoop. How many in a row?</span><span class="score" aria-live="polite">Streak <b id="score">0</b><span class="best">Best <b id="best">0</b></span></span></p>
-      <div class="toys" role="group" aria-label="Add an object">
+      <p class="hint"><span id="hint">Grab anything. Stretch it, throw it, stack it.</span><span class="score" id="tally" aria-live="polite" hidden><span>Shot <b id="shotn">1</b>/5</span><span>Made <b id="made">0</b></span><span>Best <b id="best">0</b></span></span></p>
+      <div class="toys" id="toys-add" role="group" aria-label="Add an object">
         <span class="toys-label">Add</span>
         <button type="button" data-add="donut">Donut</button>
         <button type="button" data-add="ball">Ball</button>
         <button type="button" data-add="box">Box</button>
         <button type="button" data-add="star">Star</button>
       </div>
-      <div class="toys">
+      <div class="toys" id="toys-more">
         <button type="button" id="toy-float" aria-pressed="false">Float</button>
         <button type="button" id="toy-reset">Reset</button>
+        <button type="button" id="toy-play">Play?</button>
+      </div>
+      <div class="toys" id="toys-game" hidden>
+        <button type="button" id="game-again" hidden>Play again</button>
+        <button type="button" id="game-stop">Stop</button>
       </div>
     </div>
     <div class="stage" aria-hidden="true"><canvas></canvas></div>
@@ -765,10 +770,10 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     ctx.clearRect(0, 0, W, HH);
     ctx.font = FONT.replace('SIZE', fs);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    drawHoop();
-    ctx.font = FONT.replace('SIZE', fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (game) drawCourt();
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
-    if (pops.length) {                             // "+10" rising and fading where a letter was knocked
+    if (game) drawHoop();                          // rim and net go over the ball, so it drops into them
+    if (pops.length) {                             // short notes that rise and fade, like "In!"
       var now = performance.now(), k, age;
       ctx.font = '600 15px "Instrument Sans", "Helvetica Neue", Arial, sans-serif'; ctx.fillStyle = ink;
       pops = pops.filter(function (q) { return now - q.t < 1100; });
@@ -781,52 +786,146 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     }
   }
 
-  /* ---------- the game: toss a small object through the hoop on the right wall; count how many in a row ---------- */
-  var pops = [], streak = 0, best = 0, shot = null, hoop = { x0: 0, x1: 0, y: 0, open: 0 }, swish = -1e9;
-  var scoreEl = document.getElementById('score'), bestEl = document.getElementById('best');
-  try { best = parseInt(localStorage.getItem('bestStreak'), 10) || 0; } catch (err) {}
-  bestEl.textContent = best;
-  // the hoop hangs off the right wall: the wall is the backboard, the rim's front end is a fixed peg
+  /* ---------- the game: press Play? for five free throws at a hoop on the right wall ---------- */
+  var SHOTS = 5, pops = [], game = null, best = 0, hoop = { x0: 0, x1: 0, y: 0, open: 0, r: 0, line: 0 }, net = null;
+  var ui = {};
+  ['hint', 'tally', 'shotn', 'made', 'best', 'toys-add', 'toys-more', 'toys-game', 'game-again', 'game-stop', 'toy-play'].forEach(function (id) { ui[id] = document.getElementById(id); });
+  try { best = parseInt(localStorage.getItem('bestFreeThrows'), 10) || 0; } catch (err) {}
+  ui.best.textContent = best;
+
+  // the hoop hangs off the right wall: the wall is the backboard and the front of the rim is a small fixed obstacle,
+  // so the ball has to drop between the two. The shooting line is halfway across the court.
   function placeHoop() {
-    var r = bigRadius() * 0.3, up = Math.max(2 * bigRadius() + r * 2.2, Math.min(world.floor * 0.5, world.floor - 110));
-    hoop.open = r * 3; hoop.x1 = world.w; hoop.x0 = world.w - hoop.open; hoop.y = Math.max(70, world.floor - up);
-    world.pegs.length = 0; world.pegs.push({ x: hoop.x0, y: hoop.y, r: 3.5 });
+    var r = Math.max(13, Math.min((world.w - world.homeL) * 0.05, world.floor * 0.06, 30));
+    hoop.r = r; hoop.open = r * 3.1; hoop.x1 = world.w; hoop.x0 = world.w - hoop.open;
+    hoop.y = Math.max(60, world.floor * 0.5);
+    hoop.line = world.homeL + (world.w - world.homeL) * 0.5;
+    world.pegs.length = 0; world.pegs.push({ x: hoop.x0, y: hoop.y, r: 4 });
+    makeNet();
+  }
+  // the net: a few rows of knots hanging from the rim, joined by short cords, pushed aside by whatever falls through
+  function makeNet() {
+    var cols = 5, rows = 4, i, j, k;
+    net = { cols: cols, rows: rows, x: [], y: [], px: [], py: [], links: [], busy: 0 };
+    for (i = 0; i < rows; i++) for (j = 0; j < cols; j++) {
+      net.x.push((hoop.x0 + hoop.x1) / 2 + (j / (cols - 1) - 0.5) * hoop.open * (1 - 0.13 * i));
+      net.y.push(hoop.y + i * hoop.open * 0.25);
+    }
+    net.px = net.x.slice(); net.py = net.y.slice(); net.rx = net.x.slice(); net.ry = net.y.slice();
+    function link(a, b) { net.links.push([a, b, Math.hypot(net.x[a] - net.x[b], net.y[a] - net.y[b])]); }
+    for (i = 0; i < rows; i++) for (j = 0; j < cols; j++) {
+      k = i * cols + j;
+      if (i + 1 < rows) link(k, k + cols);
+      if (i > 0 && j + 1 < cols) link(k, k + 1);
+    }
+  }
+  function stepNet() {
+    var n = net.x.length, c = net.cols, i, k, pass, l, a, b, dx, dy, d, f, vx, vy, body, moved = 0;
+    for (i = c; i < n; i++) {                       // the top row is tied to the rim
+      vx = (net.x[i] - net.px[i]) * 0.965; vy = (net.y[i] - net.py[i]) * 0.965;
+      net.px[i] = net.x[i]; net.py[i] = net.y[i];
+      net.x[i] += vx + (net.rx[i] - net.x[i]) * 0.05; net.y[i] += vy + 0.45 + (net.ry[i] - net.y[i]) * 0.05;   // it eases back to its hanging shape
+      moved += Math.abs(vx) + Math.abs(vy);
+    }
+    for (pass = 0; pass < 4; pass++) {
+      for (l = 0; l < net.links.length; l++) {
+        a = net.links[l][0]; b = net.links[l][1];
+        dx = net.x[b] - net.x[a]; dy = net.y[b] - net.y[a]; d = Math.sqrt(dx * dx + dy * dy) || 1e-6;
+        f = (d - net.links[l][2]) / d * 0.5;
+        if (a < c) { net.x[b] -= dx * f * 2; net.y[b] -= dy * f * 2; }
+        else { net.x[a] += dx * f; net.y[a] += dy * f; net.x[b] -= dx * f; net.y[b] -= dy * f; }
+      }
+      for (i = c; i < n; i++) {                     // knots are pushed out of anything solid, and cannot pass the wall
+        if (net.x[i] > world.w - 1) net.x[i] = world.w - 1;
+        for (k = 0; k < bodies.length; k++) {
+          body = bodies[k];
+          if (Math.hypot(net.x[i] - body.cx, net.y[i] - body.cy) < body.rmax) pushOut(body, i);
+        }
+      }
+    }
+    net.busy = moved;
+  }
+  function pushOut(b, i) {
+    var px = net.x[i], py = net.y[i], j, k, ins = false, best = Infinity, qx = 0, qy = 0, ex, ey, t, dx, dy, d2, d;
+    for (j = 0, k = N - 1; j < N; k = j++) {
+      if ((b.y[j] > py) !== (b.y[k] > py) && px < (b.x[k] - b.x[j]) * (py - b.y[j]) / (b.y[k] - b.y[j]) + b.x[j]) ins = !ins;
+      ex = b.x[j] - b.x[k]; ey = b.y[j] - b.y[k];
+      t = ((px - b.x[k]) * ex + (py - b.y[k]) * ey) / (ex * ex + ey * ey || 1e-9); t = t < 0 ? 0 : t > 1 ? 1 : t;
+      dx = b.x[k] + ex * t - px; dy = b.y[k] + ey * t - py; d2 = dx * dx + dy * dy;
+      if (d2 < best) { best = d2; qx = dx; qy = dy; }
+    }
+    if (!ins) return;
+    d = Math.sqrt(best) || 1e-6;
+    net.x[i] += qx * (1 + 1.5 / d); net.y[i] += qy * (1 + 1.5 / d);
+  }
+  function drawCourt() {                            // the shooting line, and the backboard on the wall
+    ctx.strokeStyle = ink; ctx.lineCap = 'butt';
+    ctx.globalAlpha = 0.4; ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
+    ctx.beginPath(); ctx.moveTo(hoop.line, Math.max(0, hoop.y - hoop.open * 1.6)); ctx.lineTo(hoop.line, world.floor); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(hoop.x1 - 2, hoop.y - hoop.open * 0.95); ctx.lineTo(hoop.x1 - 2, hoop.y + 10); ctx.stroke();
   }
   function drawHoop() {
-    var k, n = 5, kick = Math.max(0, 1 - (performance.now() - swish) / 350), drop = hoop.open * (0.62 + 0.22 * kick), x;
+    var c = net.cols, n = net.x.length, l, a, b;
     ctx.strokeStyle = ink; ctx.lineCap = 'round';
-    ctx.globalAlpha = 0.45; ctx.lineWidth = 1; ctx.beginPath();                       // the net
-    for (k = 0; k <= n; k++) {
-      x = hoop.x0 + hoop.open * k / n;
-      ctx.moveTo(x, hoop.y); ctx.lineTo(hoop.x0 + hoop.open * (0.18 + 0.64 * k / n), hoop.y + drop);
-    }
-    for (k = 1; k <= 2; k++) { ctx.moveTo(hoop.x0 + hoop.open * 0.06 * k, hoop.y + drop * k / 3); ctx.lineTo(hoop.x1 - hoop.open * 0.06 * k, hoop.y + drop * k / 3); }
+    ctx.globalAlpha = 0.55; ctx.lineWidth = 1; ctx.beginPath();
+    for (l = 0; l < net.links.length; l++) { a = net.links[l][0]; b = net.links[l][1]; ctx.moveTo(net.x[a], net.y[a]); ctx.lineTo(net.x[b], net.y[b]); }
     ctx.stroke();
-    ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.beginPath();                          // the rim and the backboard
-    ctx.moveTo(hoop.x0, hoop.y); ctx.lineTo(hoop.x1, hoop.y);
-    ctx.moveTo(hoop.x1 - 2, hoop.y - hoop.open * 0.95); ctx.lineTo(hoop.x1 - 2, hoop.y + 10);
-    ctx.stroke();
-    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(hoop.x0, hoop.y, 3.5, 0, 6.2832); ctx.fill();
+    ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hoop.x0, hoop.y); ctx.lineTo(hoop.x1, hoop.y); ctx.stroke();
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(hoop.x0, hoop.y, 4, 0, 6.2832); ctx.fill();
+    ctx.font = FONT.replace('SIZE', fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   }
-  // a throw that was a real attempt and did not go in ends the run
-  function closeShot() {
-    if (shot && shot.real && !shot.made && streak) { streak = 0; scoreEl.textContent = 0; }
-    shot = null;
+
+  function showTally() {
+    ui.shotn.textContent = Math.min(SHOTS, game.shots + (game.phase === 'aim' && !game.over ? 1 : 0));
+    ui.made.textContent = game.made; ui.best.textContent = best;
   }
+  function serve() {                                // a fresh ball behind the line for the next throw
+    if (game.ball) sim.remove(game.ball);
+    var r = hoop.r, b = sim.add('ball', Math.max(world.homeL + r + 8, hoop.line - hoop.open * 1.5), world.floor - r * 5, r, 0, 0);
+    b.entered = true; b.live = true;
+    game.ball = b; game.phase = 'aim'; showTally(); wake();
+  }
+  function endRound() {
+    game.over = true; game.phase = 'over';
+    if (game.ball) { sim.remove(game.ball); game.ball = null; }
+    var record = game.made > best;
+    if (record) { best = game.made; try { localStorage.setItem('bestFreeThrows', String(best)); } catch (err) {} }
+    ui.hint.textContent = 'You made ' + game.made + ' of ' + SHOTS + '.' + (record ? ' That is your best.' : '');
+    ui['game-again'].hidden = false; showTally();
+  }
+  function startGame() {
+    while (timers.length) clearTimeout(timers.pop());
+    pending = 0; bodies.length = 0; world.held = null; pops = [];
+    world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
+    game = { shots: 0, made: 0, ball: null, phase: 'aim', t: 0, over: false };
+    placeHoop();
+    ui.hint.textContent = 'Five free throws. Shoot from behind the dotted line.';
+    ui.tally.hidden = false; ui['toys-add'].hidden = true; ui['toys-more'].hidden = true; ui['toys-game'].hidden = false; ui['game-again'].hidden = true;
+    serve();
+  }
+  function stopGame() {
+    game = null; net = null; world.pegs.length = 0; pops = [];
+    ui.hint.textContent = 'Grab anything. Stretch it, throw it, stack it.';
+    ui.tally.hidden = true; ui['toys-add'].hidden = false; ui['toys-more'].hidden = false; ui['toys-game'].hidden = true;
+    start();
+  }
+  // each frame while playing: move the net, and decide whether the ball in flight went in or missed
   function referee() {
-    var i, b, now = performance.now();
-    for (i = 0; i < bodies.length; i++) {
-      b = bodies[i];
-      if (!b.puffy && b.R <= hoop.open * 0.5 && b !== world.held && b.lastY !== undefined &&
-          b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1 &&
-          shot && shot.body === b && shot.real && !shot.made) {
-        shot.made = true; streak++; swish = now;
-        pops.push({ x: (hoop.x0 + hoop.x1) / 2 - 10, y: hoop.y - 26, t: now, text: streak > 1 ? streak + ' in a row' : 'In!' });
-        scoreEl.textContent = streak;
-        if (streak > best) { best = streak; bestEl.textContent = best; try { localStorage.setItem('bestStreak', String(best)); } catch (err) {} }
-      }
-      b.lastY = b.cy;
+    if (!game) return;
+    stepNet();
+    var b = game.ball, now = performance.now();
+    if (!b) return;
+    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; game.shots++; showTally(); }
+    else if (game.phase === 'flight') {
+      if (b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1) {
+        game.made++; game.phase = 'done'; game.t = now; showTally();
+        pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: 'In!' });
+      } else if ((b.down && b.sp < 500) || now - game.t > 4500) { game.phase = 'done'; game.t = now - 250; }
+    } else if (game.phase === 'done' && now - game.t > 750) {
+      if (game.shots >= SHOTS) endRound(); else serve();
     }
+    b.lastY = b.cy;
   }
 
   /* ---------- loop ---------- */
@@ -838,8 +937,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (n === 3) acc = 0;
     if (n) referee();
     draw();
-    if (n) still = (v < 2.5 && !world.held && !pops.length) ? still + n : 0;
-    if (still > 45) { asleep = true; closeShot(); return; }
+    if (n) still = (v < 2.5 && !world.held && !pops.length && !(game && (net.busy > 0.6 || game.phase === 'flight' || game.phase === 'done'))) ? still + n : 0;
+    if (still > 45) { asleep = true; return; }
     raf = requestAnimationFrame(frame);
   }
   function wake() {
@@ -874,7 +973,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     var pw = Math.round(W * dpr), ph = Math.round(HH * dpr);
     if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
     fs = 8; cw = 4.8; ch = 8;                       // everything here is small, so the characters are too
-    placeHoop();
+    if (game) placeHoop();
   }
   // drop one object of radius R into the corner; x is its centre, or left out for anywhere
   function spawn(kind, R, x, resting) {
@@ -888,7 +987,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   // the opening: T, R, O, Y drop in and stand in a row; the big donut lands beside them; then a ball and a star drop in
   function start() {
     while (timers.length) clearTimeout(timers.pop());
-    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0; shot = null;
+    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0;
     var unit = letterUnit(), x = world.homeL + 4, slots = {}, R, dx;
     function later(ms, fn) {
       if (reduce) return fn();
@@ -924,11 +1023,10 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     swallowClick = false;
     if (pointerId !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
     var p = local(e), b = sim.hit(p.x, p.y);
-    if (!b) return;
+    if (!b || (game && (b !== game.ball || game.phase !== 'aim'))) return;   // while playing, only the ball waiting behind the line
     e.preventDefault();
     swallowClick = true;
     pointerId = e.pointerId;
-    closeShot();
     sim.grab(b, p.x, p.y);
     root.classList.add('grabbing');
     try { root.setPointerCapture(pointerId); } catch (err) {}
@@ -936,15 +1034,12 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   }, true);
   window.addEventListener('pointermove', function (e) {
     var p = local(e);
-    if (e.pointerId === pointerId) { world.tx = p.x; world.ty = p.y; wake(); }
+    if (e.pointerId === pointerId) { world.tx = game ? Math.min(p.x, hoop.line - hoop.r - 2) : p.x; world.ty = p.y; wake(); }   // the ball cannot be carried over the line
     else if (pointerId === null && e.pointerType === 'mouse') root.classList.toggle('can-grab', !!sim.hit(p.x, p.y));
   }, true);
   function letGo(e) {
     if (e.pointerId !== pointerId) return;
-    var b = world.held;
     pointerId = null; world.held = null;
-    // letting go starts a shot; it only counts if it was let go well to the left of the hoop (no carrying it in)
-    if (b && !b.puffy && b.R <= hoop.open * 0.5) shot = { body: b, made: false, real: b.cx < hoop.x0 - hoop.open * 0.8 };
     root.classList.remove('grabbing');
     wake();
   }
@@ -995,9 +1090,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   });
   document.getElementById('toy-reset').addEventListener('click', function () {
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
-    streak = 0; shot = null; pops = []; scoreEl.textContent = 0;
     start();
   });
+  ui['toy-play'].addEventListener('click', startGame);
+  ui['game-again'].addEventListener('click', startGame);
+  ui['game-stop'].addEventListener('click', stopGame);
 
   /* ---------- start ---------- */
   function resized() {
