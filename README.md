@@ -36,6 +36,8 @@ Edit `journal/entries.md`, then commit and push from the Source Control panel. R
 
 To preview locally, run `python3 -m http.server` in this folder and open http://localhost:8000.
 
-The toys in the corner (the letters T, R, O, Y and a big donut, plus a ball, box and star you can add) are soft bodies: two rings of particles each, held together with position-based dynamics, and drawn as shaded characters in the manner of donut.c. Their shapes and tuning constants are at the top of the `Sim` function in `index.html`.
+The toys in the corner (the letters T, R, O, Y, a big donut, and a ball and star that hang in the air, plus whatever you add) are soft bodies: two rings of particles each, held together with position-based dynamics, and drawn as shaded characters in the manner of donut.c. Their shapes and tuning constants are at the top of the `Sim` function in `index.html`.
 
 The employer logos are trademarks of their owners and are used only to identify where I worked.
+
+There is a small game in the corner: fling something at the letters, and each letter knocked out of place scores (10, then 20, 30, 40 within one throw). Letters stand back up and walk home, so you can keep going. The best score is kept in the browser.

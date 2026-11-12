@@ -116,7 +116,10 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.45rem 1rem;
   font-size: 0.8125rem;
 }
-.hint { color: var(--mute); width: 100%; }
+.hint { color: var(--mute); width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.2rem 1rem; }
+.score { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.score b { color: var(--ink); font-weight: 600; }
+.best { margin-left: 0.9rem; }
 .toys { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .toys-label { color: var(--mute); align-self: center; margin-right: 0.1rem; }
 .toys button {
@@ -180,7 +183,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       </figure>
       <div class="about">
         <p class="lede">Software engineer building ML infrastructure and AI agents that run in production.</p>
-        <p>I'm a fifth-year student at UBC studying computer science and business, ranked <b>6th of 791</b> in Sauder, and I graduate in November 2027. So far I've interned as a software engineer at four companies.</p>
+        <p>I'm a fifth-year student at UBC studying computer science and business, and I graduate in November 2027. So far I've interned as a software engineer at four companies.</p>
       </div>
     </section>
 
@@ -230,7 +233,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   <aside class="home" aria-label="Soft objects to play with">
     <div class="floor-space"></div>
     <div class="shelf">
-      <p class="hint">Grab anything. Stretch it, throw it, stack it.</p>
+      <p class="hint"><span>Fling things at the letters. Knock one out of place to score.</span><span class="score" aria-live="polite">Score <b id="score">0</b><span class="best">Best <b id="best">0</b></span></span></p>
       <div class="toys" role="group" aria-label="Add an object">
         <span class="toys-label">Add</span>
         <button type="button" data-add="donut">Donut</button>
@@ -263,7 +266,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     var A_EDGE = 3, A_SPOKE = 30, A_SHEAR = 30, A_BEND = 90;  // compliances (0 = rigid)
     var C_DEFORM = 7.5, C_AIR = 0.1, C_ROLL = 1.4;            // damping (1/s)
     var F_FLOOR = 0.22, F_WALL = 0.04, F_BODY = 0.12;
-    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, FENCE = 0, K_UP = 450;
+    var VMAX = 4800, HOME_K = 16, HOME_MAX = 3600, FENCE = 0, K_UP = 450, SLOT_K = 30, SLOT_MAX = 1100, HOVER_K = 45;
 
     /* Outlines at unit size. inner: where the second ring sits. hole: the inner
        ring is an edge you can see through. dome: how rounded the top looks. */
@@ -349,7 +352,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         x: new Float64Array(P), y: new Float64Array(P), px: new Float64Array(P), py: new Float64Array(P),
         vx: new Float64Array(P), vy: new Float64Array(P), qx: new Float64Array(P), qy: new Float64Array(P),
         gw: new Float64Array(P), gx: new Float64Array(P), gy: new Float64Array(P), gs: 1, ks: K_SHAPE, ox: 0, oy: 0, ci: [], cj: [], cl: [], ca: [],
-        A0: 0, cx: cx, cy: cy, rmax: size, sp: 1e3, slot: null, entered: false, down: false, touch: false
+        A0: 0, cx: cx, cy: cy, rmax: size, sp: 1e3, th: 0, slot: null, hover: null, entered: false, down: false, touch: false
       };
       for (i = 0; i < N; i++) {
         p = K.at(i);
@@ -401,6 +404,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         c += b.qx[i] * dx + b.qy[i] * dy;
       }
       var th = Math.atan2(s, c), co = Math.cos(th), si = Math.sin(th);
+      b.th = th;
       var ax = 0, ay = world.g;
       // the floor tilts back toward the toy corner, so nothing rests on the text
       if (world.g > 0 && world.held !== b) {
@@ -409,8 +413,10 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         dx = world.homeL - FENCE - (b.cx - b.R);
         if (dx > 0 && dx < 140 && b.sp < 300) ax += Math.min(14000, 120 * dx);
       }
-      // a letter keeps to its place in the word until it has landed and settled, or someone grabs it
-      if (b.slot !== null && world.g > 0 && world.held !== b) ax += Math.max(-1800, Math.min(1800, 60 * (b.slot - b.cx)));
+      // a hovering thing ignores gravity and eases to its spot in the air
+      if (b.hover && world.held !== b) { ax += HOVER_K * (b.hover[0] - b.cx); ay = HOVER_K * (b.hover[1] - b.cy); }
+      // a letter drifts back to its place in the word whenever it is let go, so the name re-forms after every throw
+      if (b.slot !== null && world.g > 0 && world.held !== b) ax += Math.max(-SLOT_MAX, Math.min(SLOT_MAX, SLOT_K * (b.slot - b.cx)));
       // letters are bottom-heavy: let go of one and it stands itself back up, so the name stays readable
       var up = (b.puffy && world.g > 0 && world.held !== b) ? -K_UP * 80 / b.s * si : 0;
       for (i = 0; i < P; i++) {
@@ -478,6 +484,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         if (dx * dx + dy * dy > b.rmax * b.rmax || !within(b, 0, px, py)) continue;
         if (b.hole && within(b, N, px, py)) continue;
         a.touch = b.touch = true;
+        if (a.hover && !b.hover) a.hover = null;         // knocked: it falls like anything else
+        if (b.hover && !a.hover) b.hover = null;
         best = Infinity;
         for (g = 0; g < rings; g++) {
           o = g * N;
@@ -534,7 +542,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       b.rmax = Math.sqrt(far) + 2;
       // resting contact: rolling resistance, and more of it once it is barely moving, so things come to rest
       var sp = b.sp = Math.sqrt(mx * mx + my * my), c = C_AIR;
-      if (world.g <= 0) c = 0.45; else if (b.down || b.touch) c = C_ROLL + (sp < 60 ? 9 * (1 - sp / 60) : 0);
+      if (b.hover) c = 10; else if (world.g <= 0) c = 0.45; else if (b.down || b.touch) c = C_ROLL + (sp < 60 ? 9 * (1 - sp / 60) : 0);
       var w = L / (I || 1), kd = Math.exp(-C_DEFORM * H), ka = Math.exp(-c * H);
       for (i = 0; i < P; i++) {
         rx = x[i] - b.cx; ry = y[i] - b.cy;
@@ -655,14 +663,8 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, world.floor); ctx.clip();
     ctx.strokeStyle = paper; ctx.lineWidth = 8; ctx.stroke(path);
     ctx.restore();
-    if (b.puffy) {                                 // letters get a solid side, up and to the right, like a block
-      var depth = Math.max(3, b.s * 0.07), d;
-      ctx.fillStyle = ink;
-      for (d = 1; d <= 5; d++) { ctx.save(); ctx.translate(depth * d / 5, -depth * d / 5); ctx.fill(path, 'evenodd'); ctx.restore(); }
-    }
     ctx.fillStyle = paper; ctx.fill(path, 'evenodd');
-    if (b.puffy) { ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(path); }
-    else if (OUTLINE) { ctx.globalAlpha = OUTLINE; ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(path); ctx.globalAlpha = 1; }
+    if (OUTLINE) { ctx.globalAlpha = OUTLINE; ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(path); ctx.globalAlpha = 1; }
 
     bx0 = Math.floor(minx / cw); by0 = Math.floor(miny / ch);
     bw = Math.floor(maxx / cw) - bx0 + 1; bh = Math.floor(maxy / ch) - by0 + 1;
@@ -733,7 +735,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     for (i = 0; i < 2 * N; i++) { dx = b.x[i] - b.cx; dy = b.y[i] - b.cy; sn += b.qx[i] * dy - b.qy[i] * dx; cs += b.qx[i] * dx + b.qy[i] * dy; }
     ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate(Math.atan2(sn, cs));
     ctx.beginPath(); ctx.ellipse(k.x * b.s, k.y * b.s, k.rx * b.s, k.ry * b.s, 0, 0, 6.2832);
-    ctx.fillStyle = paper; ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = paper; ctx.fill(); ctx.globalAlpha = OUTLINE || 0.28; ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -743,6 +745,41 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     ctx.font = FONT.replace('SIZE', fs);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
+    if (pops.length) {                             // "+10" rising and fading where a letter was knocked
+      var now = performance.now(), k, age;
+      ctx.font = '600 15px "Instrument Sans", "Helvetica Neue", Arial, sans-serif'; ctx.fillStyle = ink;
+      pops = pops.filter(function (q) { return now - q.t < 1100; });
+      for (k = 0; k < pops.length; k++) {
+        age = (now - pops[k].t) / 1100;
+        ctx.globalAlpha = age < 0.6 ? 1 : 1 - (age - 0.6) / 0.4;
+        ctx.fillText(pops[k].text, pops[k].x, pops[k].y - 34 * age);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ---------- the game: fling something at the letters; each one knocked out of place scores ---------- */
+  var pops = [], score = 0, best = 0, streak = 0, thrown = null, thrownAt = -1e9;
+  var scoreEl = document.getElementById('score'), bestEl = document.getElementById('best');
+  try { best = parseInt(localStorage.getItem('best'), 10) || 0; } catch (err) {}
+  bestEl.textContent = best;
+  function referee() {
+    var live = !world.held && performance.now() - thrownAt < 5000, i, b, off, tilt, out;
+    for (i = 0; i < bodies.length; i++) {
+      b = bodies[i];
+      if (!b.puffy || b.slot === null) continue;
+      off = Math.hypot(b.cx - b.slot, b.cy - b.homeY); tilt = Math.abs(b.th);
+      out = off > b.s * 0.55 || tilt > 0.55;                     // shoved well out of its place, or tipped past about 30 degrees
+      if (out && !b.fallen) {
+        b.fallen = true;
+        if (live && b !== thrown) {
+          streak++; score += 10 * streak;                        // each extra letter in the same throw is worth more
+          pops.push({ x: b.cx, y: b.cy - b.s * 0.7, t: performance.now(), text: streak === WORD.length ? 'Strike! +' + 10 * streak : '+' + 10 * streak });
+          scoreEl.textContent = score;
+          if (score > best) { best = score; bestEl.textContent = best; try { localStorage.setItem('best', String(best)); } catch (err) {} }
+        }
+      } else if (!out && b.fallen && off < b.s * 0.2 && tilt < 0.2) b.fallen = false;   // back in place: it can score again
+    }
   }
 
   /* ---------- loop ---------- */
@@ -752,9 +789,10 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     last = t; acc += dt;
     while (acc >= 1 / 60 && n < 3) { v = sim.step(); acc -= 1 / 60; n++; }
     if (n === 3) acc = 0;
+    if (n) referee();
     draw();
-    if (n) still = (v < 2.5 && !world.held) ? still + n : 0;
-    if (still > 45) { asleep = true; if (!pending) release(); return; }
+    if (n) still = (v < 2.5 && !world.held && !pops.length) ? still + n : 0;
+    if (still > 45) { asleep = true; return; }
     raf = requestAnimationFrame(frame);
   }
   function wake() {
@@ -799,11 +837,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     return b;
   }
   function settle() { for (var i = 0; i < 600 && sim.step() > 2; i++) {} }
-  // the opening: T, R, O, Y drop in and stand in a row; the big donut lands beside them with a ball riding in its hole;
-  // a small star comes down last and settles in the fork of the Y
+  // the opening: T, R, O, Y drop in and stand in a row; the big donut lands beside them;
+  // a ball and a star come down and stop in mid-air above
   function start() {
     while (timers.length) clearTimeout(timers.pop());
-    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0;
+    bodies.length = 0; world.held = null; made = 0; pending = 0; big = 0; thrown = null;
     var unit = letterUnit(), x = world.homeL + 4, slots = {}, R, dx;
     function later(ms, fn) {
       if (reduce) return fn();
@@ -815,22 +853,26 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       slots[k] = cx; x += (bx.maxx - bx.minx + GAP) * unit;
       later(140 * n, function () {
         var b = sim.add(k, cx, reduce ? world.floor - bx.maxy * unit - 1 : -bx.maxy * unit - 10, unit, 0, 0);
-        b.slot = cx; if (reduce) b.entered = true;
+        b.slot = cx; b.homeY = world.floor - bx.maxy * unit; b.fallen = false; if (reduce) b.entered = true;
       });
     });
     R = Math.max(34, Math.min(bigRadius(), (world.w - x - 6) / 2));     // the donut gets whatever room is left beside the word
     big = R; dx = Math.min(x + R + 4, world.w - R - 2);
     later(1100, function () {
-      var top = reduce ? world.floor - R - 1 : -R - 12, d = sim.add('donut', dx, top, R, 0, 0), b = sim.add('ball', dx, top + R * 0.08, R * 0.27, 0, 0);
-      if (reduce) d.entered = b.entered = true;
+      var d = sim.add('donut', dx, reduce ? world.floor - R - 1 : -R - 12, R, 0, 0);
+      if (reduce) d.entered = true;
     });
-    later(2000, function () {
-      var r = unit * 0.36, st = sim.add('star', slots.Y, reduce ? world.floor - 1.45 * unit - r : -r * 1.3 - 12, r, 0, 0);
-      if (reduce) st.entered = true;
-    });
-    if (reduce) { settle(); release(); draw(); } else wake();
+    // a ball and a star hang in the air above, until something hits them or you take one
+    function hang(kind, r, hx, hy, ms) {
+      later(ms, function () {
+        var b = sim.add(kind, hx, reduce ? hy : -r * 1.3 - 12, r, 0, 0);
+        b.hover = [hx, hy]; if (reduce) b.entered = true;
+      });
+    }
+    hang('ball', R * 0.3, (slots.R + slots.O) / 2, world.floor - unit * 2.35, 1700);
+    hang('star', R * 0.27, slots.Y + unit * 0.5, world.floor - unit * 3.1, 2000);
+    if (reduce) { settle(); draw(); } else wake();
   }
-  function release() { for (var i = 0; i < bodies.length; i++) bodies[i].slot = null; }
 
   /* ---------- pointer: grab, drag, throw ---------- */
   var pointerId = null, swallowClick = false;
@@ -846,7 +888,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     e.preventDefault();
     swallowClick = true;
     pointerId = e.pointerId;
-    b.slot = null;
+    thrown = b; streak = 0; b.hover = null;
     sim.grab(b, p.x, p.y);
     root.classList.add('grabbing');
     try { root.setPointerCapture(pointerId); } catch (err) {}
@@ -860,6 +902,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   function letGo(e) {
     if (e.pointerId !== pointerId) return;
     pointerId = null; world.held = null;
+    thrownAt = performance.now();                    // the throw is live for a few seconds: letters knocked now score
     root.classList.remove('grabbing');
     wake();
   }
@@ -893,7 +936,6 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   floatBtn.addEventListener('click', function () {
     var off = world.g > 0, i, k, b;
     world.g = off ? 0 : 2600;
-    release();
     floatBtn.setAttribute('aria-pressed', String(off));
     floatBtn.textContent = off ? 'Drop' : 'Float';
     if (off) for (i = 0; i < bodies.length; i++) {      // a small push so they lift off
@@ -911,6 +953,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   });
   document.getElementById('toy-reset').addEventListener('click', function () {
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
+    score = 0; streak = 0; pops = []; thrownAt = -1e9; scoreEl.textContent = 0;
     start();
   });
 

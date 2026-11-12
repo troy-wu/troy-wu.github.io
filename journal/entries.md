@@ -28,7 +28,7 @@ Things you can use inside an entry
 
 ![Troy nose to nose with a kitten](images/me.jpg)
 
-The front page covers my work. This page is more about me.
+Hi, I'm Troy. Here's a bit of my personal side.
 
 I love to travel, and I vlog on my [YouTube channel](https://www.youtube.com/@troywu5). I love meeting new people, exploring new cultures, and testing my mind with different perspectives. I love hanging out with great people who accept each other and bounce ideas around with no judgment.
 
