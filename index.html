@@ -130,6 +130,54 @@ a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 }
 .toys button:hover, .toys button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
+/* ---------- the game: a big scoreboard over the court, and a top-3 board when it ends ---------- */
+.floor-space { position: relative; }
+.hud {
+  --hud-h: clamp(3.4rem, 9vh, 5.2rem);                          /* every value sits in a box this tall, so the row lines up */
+  position: absolute; top: 0; left: 0; right: 0; z-index: 1;   /* under the canvas, so the ball flies in front of it */
+  display: flex; align-items: flex-start; gap: clamp(1.4rem, 3vw, 2.75rem);
+  pointer-events: none; font-variant-numeric: tabular-nums;
+}
+.hud > div { display: flex; flex-direction: column; gap: 0.35rem; }
+.hud-label { font-size: 0.8125rem; color: var(--mute); line-height: 1; }
+.hud b, .hearts { height: var(--hud-h); display: flex; align-items: center; }
+.hud b { font: 900 calc(var(--hud-h) * 1.18)/1 var(--font-dot); letter-spacing: -0.04em; }
+.hud .hud-best b { font-size: calc(var(--hud-h) * 0.62); color: var(--mute); }
+.hearts { gap: 0.35rem; }
+.hearts svg { width: calc(var(--hud-h) * 0.62); height: auto; display: block; overflow: visible; }
+.hearts path { fill: var(--ink); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; transition: fill 0.25s; }
+.hearts .gone path { fill: none; opacity: 0.45; }
+.hearts .lost { animation: lose 0.5s ease-out; }
+@keyframes lose { 0% { transform: scale(1.35); } 40% { transform: scale(0.8); } 100% { transform: scale(1); } }
+.hud.hit b#made { animation: lose 0.4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .hearts .lost, .hud.hit b#made { animation: none; } }
+
+.board {
+  position: absolute; top: 0; left: 0; z-index: 11;            /* over the canvas, so it can be typed in */
+  width: min(19rem, 100%); padding: 0.9rem 1rem 1rem;
+  background: var(--paper); border: 2px solid var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.8125rem; color: var(--mute); }
+.board-score { font: 900 2.6rem/0.9 var(--font-dot); margin: 0.35rem 0 0.15rem; }
+.board-score span { font: 400 0.9375rem var(--font-text); color: var(--mute); margin-left: 0.35rem; letter-spacing: 0; }
+.board-note { font-size: 0.875rem; min-height: 1.3em; }
+.board-list { margin-top: 0.7rem; border-top: 1px solid var(--ink); }
+.board-list li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; align-items: center; gap: 0.5rem; min-height: 2.1rem; border-bottom: 1px solid var(--ink); }
+.board-list .rank { color: var(--mute); }
+.board-list .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.board-list .empty .who { color: var(--mute); font-weight: 400; }
+.board-list .pts { font: 900 1.35rem/1 var(--font-dot); }
+.board-list .mine { background: var(--ink); color: var(--paper); margin: 0 -0.4rem; padding: 0 0.4rem; }
+.board-list .mine .rank { color: inherit; }
+.board-form { display: flex; gap: 0.35rem; min-width: 0; }
+.board-form input {
+  flex: 1; min-width: 0; font: 600 16px var(--font-text); color: var(--ink); background: var(--paper);
+  border: 0; border-radius: 0; padding: 0.15rem 0.35rem; outline: none;
+}
+.board-form button { font: inherit; font-size: 0.8125rem; color: var(--paper); background: none; border: 1px solid var(--paper); border-radius: 0; padding: 0.1rem 0.5rem; cursor: pointer; }
+.board-form button:hover { background: var(--paper); color: var(--ink); }
+
 .stage { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
 .stage canvas { display: block; width: 100%; height: 100%; }
 html.can-grab, html.can-grab * { cursor: grab !important; }
@@ -149,6 +197,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   .floor-space { flex: none; height: 17rem; }
   .shelf { padding: 0.55rem 0.7rem 0.65rem; }
   .stage { position: absolute; }
+  .hud { --hud-h: 3rem; padding: 0.6rem 0.75rem 0; gap: 1.4rem; }
+  .board { top: 0.5rem; left: 0.5rem; width: min(19rem, calc(100% - 1rem)); padding: 0.6rem 0.75rem 0.7rem; }
+  .board-score { font-size: 2.1rem; }
+  .board-list { margin-top: 0.45rem; }
+  .board-list li { min-height: 1.85rem; }
   .work { order: 3; }
   .more { order: 4; }
   .role-head { flex-wrap: wrap; gap: 0 0.6rem; }
@@ -234,9 +287,21 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   </main>
 
   <aside class="home" aria-label="Soft objects to play with">
-    <div class="floor-space"></div>
+    <div class="floor-space">
+      <div class="hud" id="hud" hidden>
+        <div class="hud-made"><span class="hud-label">Made</span><b id="made" aria-live="polite">0</b></div>
+        <div class="hud-lives"><span class="hud-label" id="lives-label">Lives</span><span class="hearts" id="lives" role="img" aria-labelledby="lives-label"></span></div>
+        <div class="hud-best"><span class="hud-label">Best</span><b id="best">0</b></div>
+      </div>
+      <div class="board" id="board" hidden>
+        <p class="board-head"><span>Game over</span><span>Top 3</span></p>
+        <p class="board-score"><b id="final">0</b><span id="final-unit">made</span></p>
+        <p class="board-note" id="board-note" aria-live="polite"></p>
+        <ol class="board-list" id="board-list"></ol>
+      </div>
+    </div>
     <div class="shelf">
-      <p class="hint"><span id="hint">Grab anything. Stretch it, throw it, stack it.</span><span class="score" id="tally" aria-live="polite" hidden><span>Shot <b id="shotn">1</b>/5</span><span>Made <b id="made">0</b></span><span>Best <b id="best">0</b></span></span></p>
+      <p class="hint"><span id="hint">Grab anything. Stretch it, throw it, stack it.</span></p>
       <div class="toys" id="toys-add" role="group" aria-label="Add an object">
         <span class="toys-label">Add</span>
         <button type="button" data-add="donut">Donut</button>
@@ -247,7 +312,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       <div class="toys" id="toys-more">
         <button type="button" id="toy-float" aria-pressed="false">Float</button>
         <button type="button" id="toy-reset">Reset</button>
-        <button type="button" id="toy-play">Play?</button>
+        <button type="button" id="toy-play">Play basketball</button>
       </div>
       <div class="toys" id="toys-game" hidden>
         <button type="button" id="game-again" hidden>Play again</button>
@@ -786,12 +851,69 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     }
   }
 
-  /* ---------- the game: press Play? for five free throws at a hoop on the right wall ---------- */
-  var SHOTS = 5, pops = [], game = null, best = 0, hoop = { x0: 0, x1: 0, y: 0, open: 0, r: 0, line: 0 }, net = null;
+  /* ---------- the game: press Play basketball and shoot at a hoop on the right wall until you have missed three times ---------- */
+  var LIVES = 3, TOP = 3, pops = [], game = null, best = 0, board = [], hoop = { x0: 0, x1: 0, y: 0, open: 0, r: 0, line: 0 }, net = null;
   var ui = {};
-  ['hint', 'tally', 'shotn', 'made', 'best', 'toys-add', 'toys-more', 'toys-game', 'game-again', 'game-stop', 'toy-play'].forEach(function (id) { ui[id] = document.getElementById(id); });
-  try { best = parseInt(localStorage.getItem('bestFreeThrows'), 10) || 0; } catch (err) {}
+  ['hint', 'hud', 'made', 'best', 'lives', 'board', 'final', 'final-unit', 'board-note', 'board-list', 'toys-add', 'toys-more', 'toys-game', 'game-again', 'game-stop', 'toy-play'].forEach(function (id) { ui[id] = document.getElementById(id); });
+  var HEART = '<svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 20.5C5 15.5 1.5 11.8 1.5 7.3 1.5 4 4 1.5 7.1 1.5c2.1 0 3.9 1.2 4.9 3 1-1.8 2.8-3 4.9-3 3.1 0 5.6 2.5 5.6 5.8 0 4.5-3.5 8.2-10.5 13.2z"/></svg>';
+  ui.lives.innerHTML = new Array(LIVES + 1).join(HEART);
+
+  // the leaderboard: the top three rounds played in this browser, each with the name its player wrote
+  function loadBoard() {
+    var list = null;
+    try { list = JSON.parse(localStorage.getItem('hoopsBoard')); } catch (err) {}
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (e) { return e && typeof e.n === 'string' && typeof e.s === 'number' && e.s > 0; })
+      .map(function (e) { return { n: e.n.slice(0, 12), s: Math.floor(e.s) }; })
+      .sort(function (a, b) { return b.s - a.s; }).slice(0, TOP);
+  }
+  function saveBoard() { try { localStorage.setItem('hoopsBoard', JSON.stringify(board)); } catch (err) {} }
+  // where a score would land on the board, or -1 if it does not make the top three
+  function placeOf(score) {
+    if (score <= 0) return -1;
+    for (var i = 0; i < board.length; i++) if (score > board[i].s) return i;
+    return board.length < TOP ? board.length : -1;
+  }
+  board = loadBoard();
+  try { best = parseInt(localStorage.getItem('bestHoops'), 10) || 0; } catch (err) {}
+  best = Math.max(best, board.length ? board[0].s : 0);
   ui.best.textContent = best;
+
+  function renderBoard(rows, edit, mine) {
+    var ol = ui['board-list'], i, e, li, who, input = null;
+    ol.textContent = '';
+    for (i = 0; i < TOP; i++) {
+      e = rows[i]; li = document.createElement('li');
+      if (!e) li.className = 'empty';
+      if (i === edit || i === mine) li.classList.add('mine');
+      li.appendChild(cell('rank', String(i + 1)));
+      if (i === edit) {
+        who = document.createElement('form'); who.className = 'board-form';
+        input = document.createElement('input');
+        input.maxLength = 12; input.placeholder = 'Your name'; input.autocomplete = 'off'; input.spellcheck = false;
+        input.setAttribute('enterkeyhint', 'done'); input.setAttribute('aria-label', 'Your name for the leaderboard');
+        var save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Save';
+        who.appendChild(input); who.appendChild(save);
+        who.addEventListener('submit', function (ev) { ev.preventDefault(); saveName(input.value); });
+        li.appendChild(who);
+      } else li.appendChild(cell('who', e ? e.n : '—'));
+      li.appendChild(cell('pts', e ? String(e.s) : ''));
+      ol.appendChild(li);
+    }
+    return input;
+  }
+  function cell(cls, text) { var s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
+  function saveName(name) {
+    if (!game || game.place < 0) return;
+    name = name.replace(/\s+/g, ' ').trim().slice(0, 12) || 'Anonymous';
+    board.splice(game.place, 0, { n: name, s: game.made });
+    if (board.length > TOP) board.length = TOP;
+    saveBoard();
+    renderBoard(board, -1, game.place);
+    ui['board-note'].textContent = 'Saved. You are number ' + (game.place + 1) + '.';
+    game.place = -1;
+    try { ui['game-again'].focus({ preventScroll: true }); } catch (err) {}
+  }
 
   // the hoop hangs off the right wall: the wall is the backboard and the front of the rim is a small fixed obstacle,
   // so the ball has to drop between the two. The shooting line is halfway across the court.
@@ -876,38 +998,59 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     ctx.font = FONT.replace('SIZE', fs); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   }
 
-  function showTally() {
-    ui.shotn.textContent = Math.min(SHOTS, game.shots + (game.phase === 'aim' && !game.over ? 1 : 0));
-    ui.made.textContent = game.made; ui.best.textContent = best;
+  // the big scoreboard over the court: shots made, hearts for lives left, and the best round so far
+  function showHud(lost, scored) {
+    var hs = ui.lives.children, i, h;
+    ui.made.textContent = game.made; ui.best.textContent = Math.max(best, game.made);
+    for (i = 0; i < hs.length; i++) hs[i].classList.toggle('gone', i >= game.lives);
+    ui.lives.setAttribute('aria-label', game.lives + (game.lives === 1 ? ' life' : ' lives') + ' left');
+    if (lost && (h = hs[game.lives])) { h.classList.remove('lost'); void h.offsetWidth; h.classList.add('lost'); }
+    if (scored) { ui.hud.classList.remove('hit'); void ui.hud.offsetWidth; ui.hud.classList.add('hit'); }
   }
   function serve() {                                // a fresh ball behind the line for the next throw
     if (game.ball) sim.remove(game.ball);
     var r = hoop.r, b = sim.add('ball', Math.max(world.homeL + r + 8, hoop.line - hoop.open * 1.5), world.floor - r * 5, r, 0, 0);
     b.entered = true; b.live = true;
-    game.ball = b; game.phase = 'aim'; showTally(); wake();
+    game.ball = b; game.phase = 'aim'; wake();
   }
   function endRound() {
     game.over = true; game.phase = 'over';
     if (game.ball) { sim.remove(game.ball); game.ball = null; }
-    var record = game.made > best;
-    if (record) { best = game.made; try { localStorage.setItem('bestFreeThrows', String(best)); } catch (err) {} }
-    ui.hint.textContent = 'You made ' + game.made + ' of ' + SHOTS + '.' + (record ? ' That is your best.' : '');
-    ui['game-again'].hidden = false; showTally();
+    var record = game.made > best, input = null;
+    if (record) { best = game.made; try { localStorage.setItem('bestHoops', String(best)); } catch (err) {} }
+    game.place = placeOf(game.made);
+    ui.final.textContent = game.made;
+    ui['final-unit'].textContent = game.made === 1 ? 'shot made' : 'shots made';
+    if (game.place >= 0) {
+      var rows = board.slice();
+      rows.splice(game.place, 0, { n: '', s: game.made });
+      input = renderBoard(rows, game.place, -1);
+      ui['board-note'].textContent = (record ? 'New best. ' : '') + 'You made the top 3, write your name.';
+    } else {
+      renderBoard(board, -1, -1);
+      ui['board-note'].textContent = record ? 'New best.' : 'Best is ' + best + '.';
+    }
+    ui.hint.textContent = 'Out of lives. You made ' + game.made + '.';
+    ui.hud.hidden = true; ui.board.hidden = false; ui['game-again'].hidden = false;
+    if (input) try { input.focus({ preventScroll: true }); } catch (err) {}
   }
   function startGame() {
     while (timers.length) clearTimeout(timers.pop());
     pending = 0; bodies.length = 0; world.held = null; pops = [];
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
-    game = { shots: 0, made: 0, ball: null, phase: 'aim', t: 0, over: false };
+    game = { lives: LIVES, made: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1 };
     placeHoop();
-    ui.hint.textContent = 'Five free throws. Shoot from behind the dotted line.';
-    ui.tally.hidden = false; ui['toys-add'].hidden = true; ui['toys-more'].hidden = true; ui['toys-game'].hidden = false; ui['game-again'].hidden = true;
+    ui.hint.textContent = 'Shoot from behind the dotted line. Miss and you lose a life.';
+    ui.hud.hidden = false; ui.board.hidden = true;
+    ui['toys-add'].hidden = true; ui['toys-more'].hidden = true; ui['toys-game'].hidden = false; ui['game-again'].hidden = true;
+    showHud(false, false);
     serve();
   }
   function stopGame() {
     game = null; net = null; world.pegs.length = 0; pops = [];
     ui.hint.textContent = 'Grab anything. Stretch it, throw it, stack it.';
-    ui.tally.hidden = true; ui['toys-add'].hidden = false; ui['toys-more'].hidden = false; ui['toys-game'].hidden = true;
+    ui.hud.hidden = true; ui.board.hidden = true;
+    ui['toys-add'].hidden = false; ui['toys-more'].hidden = false; ui['toys-game'].hidden = true;
     start();
   }
   // each frame while playing: move the net, and decide whether the ball in flight went in or missed
@@ -916,14 +1059,17 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     stepNet();
     var b = game.ball, now = performance.now();
     if (!b) return;
-    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; game.shots++; showTally(); }
+    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; }
     else if (game.phase === 'flight') {
       if (b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1) {
-        game.made++; game.phase = 'done'; game.t = now; showTally();
+        game.made++; game.phase = 'done'; game.t = now; showHud(false, true);
         pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: 'In!' });
-      } else if ((b.down && b.sp < 500) || now - game.t > 4500) { game.phase = 'done'; game.t = now - 250; }
-    } else if (game.phase === 'done' && now - game.t > 750) {
-      if (game.shots >= SHOTS) endRound(); else serve();
+      } else if ((b.down && b.sp < 500) || now - game.t > 4500) {   // a miss costs a life
+        game.lives--; game.phase = 'done'; game.t = now - 250; showHud(true, false);
+        pops.push({ x: Math.max(world.homeL + 24, Math.min(world.w - 24, b.cx)), y: b.cy - b.R - 12, t: now, text: 'Miss' });
+      }
+    } else if (game.phase === 'done' && now - game.t > (game.lives > 0 ? 750 : 1150)) {
+      if (game.lives <= 0) endRound(); else serve();
     }
     b.lastY = b.cy;
   }
