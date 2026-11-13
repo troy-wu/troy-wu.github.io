@@ -858,16 +858,43 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   var HEART = '<svg viewBox="0 0 24 22" aria-hidden="true"><path d="M12 20.5C5 15.5 1.5 11.8 1.5 7.3 1.5 4 4 1.5 7.1 1.5c2.1 0 3.9 1.2 4.9 3 1-1.8 2.8-3 4.9-3 3.1 0 5.6 2.5 5.6 5.8 0 4.5-3.5 8.2-10.5 13.2z"/></svg>';
   ui.lives.innerHTML = new Array(LIVES + 1).join(HEART);
 
-  // the leaderboard: the top three rounds played in this browser, each with the name its player wrote
+  // the leaderboard: the top three rounds, each with the name its player wrote.
+  // BOARD_URL points at a small shared database (a Firebase Realtime Database path, see the README), so every visitor
+  // sees the same board. Left empty, the board is kept in this browser only. The browser copy is also the fallback.
+  var BOARD_URL = '';
+  function tidy(list) {
+    return list.filter(function (e) { return e && typeof e.n === 'string' && typeof e.s === 'number' && e.s > 0; })
+      .map(function (e) { return { n: e.n.slice(0, 12), s: Math.floor(e.s), t: typeof e.t === 'number' ? e.t : 0 }; })
+      .sort(function (a, b) { return b.s - a.s || a.t - b.t; }).slice(0, TOP);       // highest first; on a tie, whoever got there first
+  }
   function loadBoard() {
     var list = null;
     try { list = JSON.parse(localStorage.getItem('hoopsBoard')); } catch (err) {}
-    if (!Array.isArray(list)) return [];
-    return list.filter(function (e) { return e && typeof e.n === 'string' && typeof e.s === 'number' && e.s > 0; })
-      .map(function (e) { return { n: e.n.slice(0, 12), s: Math.floor(e.s) }; })
-      .sort(function (a, b) { return b.s - a.s; }).slice(0, TOP);
+    return Array.isArray(list) ? tidy(list) : [];
   }
   function saveBoard() { try { localStorage.setItem('hoopsBoard', JSON.stringify(board)); } catch (err) {} }
+  // read the shared board; done(true) once it has replaced the copy held here
+  function fetchBoard(done) {
+    if (!BOARD_URL || !window.fetch) { if (done) done(false); return; }
+    fetch(BOARD_URL + '.json?orderBy=%22s%22&limitToLast=' + TOP, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (data) {
+        var list = [], k;
+        for (k in data || {}) list.push(data[k]);
+        board = tidy(list); saveBoard();
+        best = Math.max(best, board.length ? board[0].s : 0);
+        ui.best.textContent = game && !game.over ? Math.max(best, game.made) : best;
+        if (done) done(true);
+      })
+      .catch(function () { if (done) done(false); });
+  }
+  // add one round to the shared board; done(true) if the database took it
+  function postScore(name, score, done) {
+    if (!BOARD_URL || !window.fetch) { done(false); return; }
+    fetch(BOARD_URL + '.json', { method: 'POST', body: JSON.stringify({ n: name, s: score, t: { '.sv': 'timestamp' } }) })
+      .then(function (r) { done(r.ok); })
+      .catch(function () { done(false); });
+  }
   // where a score would land on the board, or -1 if it does not make the top three
   function placeOf(score) {
     if (score <= 0) return -1;
@@ -878,6 +905,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   try { best = parseInt(localStorage.getItem('bestHoops'), 10) || 0; } catch (err) {}
   best = Math.max(best, board.length ? board[0].s : 0);
   ui.best.textContent = best;
+  fetchBoard();
 
   function renderBoard(rows, edit, mine) {
     var ol = ui['board-list'], i, e, li, who, input = null;
@@ -906,13 +934,25 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   function saveName(name) {
     if (!game || game.place < 0) return;
     name = name.replace(/\s+/g, ' ').trim().slice(0, 12) || 'Anonymous';
-    board.splice(game.place, 0, { n: name, s: game.made });
+    var score = game.made, round = game;
+    board.splice(game.place, 0, { n: name, s: score, t: Date.now() });
     if (board.length > TOP) board.length = TOP;
     saveBoard();
     renderBoard(board, -1, game.place);
     ui['board-note'].textContent = 'Saved. You are number ' + (game.place + 1) + '.';
-    game.place = -1;
+    game.place = -1; game.named = true;
     try { ui['game-again'].focus({ preventScroll: true }); } catch (err) {}
+    if (!BOARD_URL) return;
+    postScore(name, score, function (ok) {                // then put it on the board everyone sees, and show that board
+      if (!ok) { if (game === round) ui['board-note'].textContent = 'Saved in this browser. The shared board could not be reached.'; return; }
+      fetchBoard(function () {
+        if (game !== round || !game.over) return;
+        var mine = -1, i;
+        for (i = 0; i < board.length; i++) if (board[i].n === name && board[i].s === score) { mine = i; break; }
+        renderBoard(board, -1, mine);
+        ui['board-note'].textContent = mine >= 0 ? 'Saved. You are number ' + (mine + 1) + '.' : 'Saved, but someone has since pushed you off the top 3.';
+      });
+    });
   }
 
   // the hoop hangs off the right wall: the wall is the backboard and the front of the rim is a small fixed obstacle,
@@ -1021,24 +1061,40 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     game.place = placeOf(game.made);
     ui.final.textContent = game.made;
     ui['final-unit'].textContent = game.made === 1 ? 'shot made' : 'shots made';
+    input = showPlace(record, '');
+    ui.hint.textContent = 'Out of lives. You made ' + game.made + '.';
+    ui.hud.hidden = true; ui.board.hidden = false; ui['game-again'].hidden = false;
+    if (input) try { input.focus({ preventScroll: true }); } catch (err) {}
+    var round = game;                                     // others may have scored meanwhile: check the shared board again
+    fetchBoard(function (fresh) {
+      if (!fresh || game !== round || !game.over || round.named) return;
+      var typed = ui['board-list'].querySelector('input'), had = typed ? typed.value : '', focused = typed && document.activeElement === typed;
+      game.place = placeOf(game.made);
+      typed = showPlace(game.made > 0 && game.made >= best, had);
+      if (typed && focused) try { typed.focus({ preventScroll: true }); } catch (err) {}
+    });
+  }
+  // draw the board for the round that just ended, with a name box in its row if it made the top three
+  function showPlace(record, typed) {
+    var input = null;
     if (game.place >= 0) {
       var rows = board.slice();
       rows.splice(game.place, 0, { n: '', s: game.made });
       input = renderBoard(rows, game.place, -1);
+      if (typed) input.value = typed;
       ui['board-note'].textContent = (record ? 'New best. ' : '') + 'You made the top 3, write your name.';
     } else {
       renderBoard(board, -1, -1);
       ui['board-note'].textContent = record ? 'New best.' : 'Best is ' + best + '.';
     }
-    ui.hint.textContent = 'Out of lives. You made ' + game.made + '.';
-    ui.hud.hidden = true; ui.board.hidden = false; ui['game-again'].hidden = false;
-    if (input) try { input.focus({ preventScroll: true }); } catch (err) {}
+    return input;
   }
   function startGame() {
     while (timers.length) clearTimeout(timers.pop());
     pending = 0; bodies.length = 0; world.held = null; pops = [];
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
-    game = { lives: LIVES, made: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1 };
+    game = { lives: LIVES, made: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1, named: false };
+    fetchBoard();
     placeHoop();
     ui.hint.textContent = 'Shoot from behind the dotted line. Miss and you lose a life.';
     ui.hud.hidden = false; ui.board.hidden = true;
