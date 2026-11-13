@@ -861,7 +861,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   // the leaderboard: the top three rounds, each with the name its player wrote.
   // BOARD_URL points at a small shared database (a Firebase Realtime Database path, see the README), so every visitor
   // sees the same board. Left empty, the board is kept in this browser only. The browser copy is also the fallback.
-  var BOARD_URL = '';
+  var BOARD_URL = 'https://troy-wu-default-rtdb.firebaseio.com/hoops';
   function tidy(list) {
     return list.filter(function (e) { return e && typeof e.n === 'string' && typeof e.s === 'number' && e.s > 0; })
       .map(function (e) { return { n: e.n.slice(0, 12), s: Math.floor(e.s), t: typeof e.t === 'number' ? e.t : 0 }; })
