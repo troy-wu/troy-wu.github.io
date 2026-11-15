@@ -1257,6 +1257,38 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (t && sim.hit(t.clientX - r.left, t.clientY - r.top)) e.preventDefault();
   }, { passive: false, capture: true });
 
+  /* ---------- hops: double-tap a toy, or type T R O Y, and it jumps and flips ---------- */
+  function hop(b) {
+    var k, flip = reduce ? 0 : (Math.random() < 0.5 ? -1 : 1) * 10.5;   // about one turn in the air
+    sim.centroid(b);
+    for (k = 0; k < 2 * N; k++) {
+      b.vx[k] = -flip * (b.y[k] - b.cy);
+      b.vy[k] = -900 + flip * (b.x[k] - b.cx);
+    }
+    wake();
+  }
+  var tap = { b: null, t: 0, x: 0, y: 0 }, lastTap = { b: null, t: 0 };
+  window.addEventListener('pointerdown', function (e) {
+    var p = local(e);
+    tap = { b: world.held, t: e.timeStamp, x: p.x, y: p.y };   // the grab above has already run
+  });
+  window.addEventListener('pointerup', function (e) {
+    var p = local(e), b = tap.b;
+    if (!b || game || e.timeStamp - tap.t > 300 || Math.hypot(p.x - tap.x, p.y - tap.y) > 12) return;   // a drag, not a tap
+    if (lastTap.b === b && e.timeStamp - lastTap.t < 400) { hop(b); lastTap.b = null; }
+    else lastTap = { b: b, t: e.timeStamp };
+  });
+  var typed = '';
+  window.addEventListener('keydown', function (e) {
+    if (game || e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    typed = (typed + e.key.toLowerCase()).slice(-4);
+    if (typed !== 'troy') return;
+    typed = '';
+    WORD.forEach(function (k, n) {                       // a wave along the word
+      bodies.forEach(function (b) { if (b.kind === k) timers.push(setTimeout(function () { hop(b); }, 130 * n)); });
+    });
+  });
+
   /* ---------- the buttons ---------- */
   var floatBtn = document.getElementById('toy-float');
   Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function (btn) {
