@@ -601,7 +601,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       s = (1 - bt) * (1 - bt) + bt * bt;
       b.x[bj] += bx * m * (1 - bt) / s; b.y[bj] += by * m * (1 - bt) / s;
       b.x[bk] += bx * m * bt / s; b.y[bk] += by * m * bt / s;
-      b.touch = true;
+      b.touch = true; b.rim = true;                  // the game checks this for a swish
     }
 
     function walls(b) {
@@ -611,7 +611,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         if (y[i] > world.floor) { y[i] = world.floor; x[i] -= (x[i] - b.px[i]) * F_FLOOR; b.down = true; }
         if (b.entered && y[i] < 0) { y[i] = 0; x[i] -= (x[i] - b.px[i]) * F_WALL; }
         if (x[i] < 0) { x[i] = 0; y[i] -= (y[i] - b.py[i]) * F_WALL; }
-        if (x[i] > world.w) { x[i] = world.w; y[i] -= (y[i] - b.py[i]) * F_WALL; }
+        if (x[i] > world.w) { x[i] = world.w; y[i] -= (y[i] - b.py[i]) * F_WALL; b.rim = true; }
         if (y[i] < top) top = y[i];
       }
       if (top > 1) b.entered = true;
@@ -1093,7 +1093,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     while (timers.length) clearTimeout(timers.pop());
     pending = 0; bodies.length = 0; world.held = null; pops = [];
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
-    game = { lives: LIVES, made: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1, named: false };
+    game = { lives: LIVES, made: 0, streak: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1, named: false };
     fetchBoard();
     placeHoop();
     ui.hint.textContent = 'Shoot from behind the dotted line. Miss and you lose a life.';
@@ -1115,13 +1115,14 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     stepNet();
     var b = game.ball, now = performance.now();
     if (!b) return;
-    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; }
+    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; b.rim = false; }
     else if (game.phase === 'flight') {
       if (b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1) {
-        game.made++; game.phase = 'done'; game.t = now; showHud(false, true);
-        pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: 'In!' });
+        game.made++; game.streak++; game.phase = 'done'; game.t = now; showHud(false, true);
+        pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: b.rim ? 'In!' : 'Swish!' });   // nothing but net
+        if (game.streak > 1) pops.push({ x: Math.min(hoop.x0 - 4, world.w - 44), y: hoop.y - 46, t: now, text: game.streak + ' in a row' });
       } else if ((b.down && b.sp < 500) || now - game.t > 4500) {   // a miss costs a life
-        game.lives--; game.phase = 'done'; game.t = now - 250; showHud(true, false);
+        game.lives--; game.streak = 0; game.phase = 'done'; game.t = now - 250; showHud(true, false);
         pops.push({ x: Math.max(world.homeL + 24, Math.min(world.w - 24, b.cx)), y: b.cy - b.R - 12, t: now, text: 'Miss' });
       }
     } else if (game.phase === 'done' && now - game.t > (game.lives > 0 ? 750 : 1150)) {
