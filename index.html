@@ -839,6 +839,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (game) drawCourt();
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
     if (game) drawHoop();                          // rim and net go over the ball, so it drops into them
+    if (puffs.length) drawPuffs();
     if (pops.length) {                             // short notes that rise and fade, like "In!"
       var now = performance.now(), k, age;
       ctx.font = '600 15px "Instrument Sans", "Helvetica Neue", Arial, sans-serif'; ctx.fillStyle = ink;
@@ -1141,7 +1142,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (n === 3) acc = 0;
     if (n) referee();
     draw();
-    if (n) still = (v < 2.5 && !world.held && !pops.length && !(game && (net.busy > 0.6 || game.phase === 'flight' || game.phase === 'done'))) ? still + n : 0;
+    if (n) still = (v < 2.5 && !world.held && !pops.length && !puffs.length && !(game && (net.busy > 0.6 || game.phase === 'flight' || game.phase === 'done'))) ? still + n : 0;
     if (still > 45) { asleep = true; return; }
     raf = requestAnimationFrame(frame);
   }
@@ -1290,6 +1291,42 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       bodies.forEach(function (b) { if (b.kind === k) timers.push(setTimeout(function () { hop(b); }, 130 * n)); });
     });
   });
+
+  /* ---------- gusts: tap the empty floor and a puff of air pushes the toys away from that spot ---------- */
+  var puffs = [];
+  window.addEventListener('pointerdown', function (e) {
+    if (game || world.held || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('a, button, input')) return;
+    var p = local(e), r = space.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    if (p.x < r.left - s.left || p.x > r.right - s.left || p.y < r.top - s.top || p.y > world.floor) return;   // only the open floor
+    var reach = Math.max(130, bigRadius() * 2.6), i, k, b, dx, dy, d, f, v, spin;
+    for (i = 0; i < bodies.length; i++) {
+      b = bodies[i]; sim.centroid(b);
+      dx = b.cx - p.x; dy = b.cy - p.y; d = Math.hypot(dx, dy) || 1;
+      f = 1 - Math.max(0, d - b.R * 0.6) / reach;
+      if (f <= 0) continue;
+      v = 1150 * f * Math.min(1.5, Math.sqrt(b.w));      // lighter things fly further
+      dx = dx / d; dy = dy / d - 0.7; d = Math.hypot(dx, dy) || 1;   // away from the spot, and a little up
+      spin = reduce ? 0 : (Math.random() - 0.5) * 4 * f;
+      for (k = 0; k < 2 * N; k++) {
+        b.vx[k] += v * dx / d - spin * (b.y[k] - b.cy);
+        b.vy[k] += v * dy / d + spin * (b.x[k] - b.cx);
+      }
+    }
+    if (!reduce) puffs.push({ x: p.x, y: p.y, r: reach * 0.55, t: performance.now() });
+    wake();
+  });
+  // the puff itself: a ring of characters that spreads out and fades
+  function drawPuffs() {
+    var now = performance.now(), i, k, q, age, rad;
+    puffs = puffs.filter(function (q) { return now - q.t < 450; });
+    ctx.font = FONT.replace('SIZE', 13); ctx.fillStyle = ink;
+    for (i = 0; i < puffs.length; i++) {
+      q = puffs[i]; age = (now - q.t) / 450; rad = 6 + q.r * Math.sqrt(age);
+      ctx.globalAlpha = 0.7 * (1 - age);
+      for (k = 0; k < 18; k++) ctx.fillText(age < 0.5 ? '*' : '.', q.x + rad * Math.cos(k * 0.349), Math.min(world.floor - 4, q.y + rad * Math.sin(k * 0.349)));
+    }
+    ctx.globalAlpha = 1;
+  }
 
   /* ---------- the buttons ---------- */
   var floatBtn = document.getElementById('toy-float');
