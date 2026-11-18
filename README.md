@@ -17,6 +17,10 @@ Edit it in the browser here: https://github.com/troy-wu/troy-wu.github.io/edit/g
 
 The note at the top of that file lists what you can use (pull quotes, section breaks, pictures, covers, "Soon:" placeholders, drafts). Pictures go in `journal/images/`. The text above the first title in that file is the note about me beside the list.
 
+### In the editor
+
+https://troy-wu.github.io/journal/edit/ is a small editor for the journal: sign in, type, add photos, then **Save draft** or **Publish**. It works on a phone. Entries written there are kept in the database, not in `entries.md`, and the journal page shows both together, newest first. See "The journal editor" below for how it is set up.
+
 ### In VS Code
 
 ```
@@ -30,6 +34,7 @@ Edit `journal/entries.md`, then commit and push from the Source Control panel. R
 
 - `index.html` holds the home page: the content, the styles, and the script for the toys.
 - `journal/index.html` lays out the journal; `journal/marked.min.js` is the Markdown renderer it uses (marked, MIT licence).
+- `journal/edit/index.html` is the editor, and `journal/db.js` is the small piece both pages use to read entries and photos from the database.
 - `images/troy.jpg` is the portrait, and `images/logos/` holds the four employer logos.
 - `fonts/` holds the three self-hosted fonts (SIL Open Font License, see `fonts/LICENSE.txt`).
 - `resume.pdf` is what the Resume link opens.
@@ -71,3 +76,61 @@ The basketball top 3 is kept in the visitor's browser until `BOARD_URL` in `inde
 ```
 
 These rules let anyone read the board and add a new entry (a name of up to 12 characters and a whole-number score from 1 to 500), and let nobody change or delete entries. To remove an entry, delete it on the Data tab in the Firebase console.
+
+## The journal editor
+
+The editor at `/journal/edit/` keeps entries in the same Firebase Realtime Database as the leaderboard, as plain text:
+
+- `journal/drafts/<id>` is the working copy of every entry (`title`, `date`, `body`, and when it was saved). Only the owner can read or write it.
+- `journal/published/<id>` is the copy visitors see. **Publish** writes it; **Save draft** never touches it, so a published entry can be reworked in private and published again when ready. **Unpublish** removes it and keeps the draft.
+- `journal/images/<id>` holds one photo each. The editor shrinks a photo to at most 1600 pixels on its long side (usually 100 to 400 KB) before storing it, and puts a line like `![](db:<id>)` in the text where the photo goes.
+
+The `body` is the text exactly as typed (Markdown works, the same as in `entries.md`), so it can be restyled or moved later without losing anything.
+
+Anyone can open the editor page, but it can do nothing without signing in as the owner: the database rules below are what keep everyone else out, not the page. To switch it on (once):
+
+1. In the Firebase console for the `troy-wu` project, go to Build > Authentication > Get started, and turn on the **Email/Password** sign-in method.
+2. On the Authentication > Users tab, press **Add user**, and enter your email and a password you choose. Copy the **User UID** shown beside the new user.
+3. On Realtime Database > Rules, replace the rules with the ones below, putting your User UID in place of `YOUR_USER_UID` (three places), and publish. The `hoops` part is the leaderboard's, unchanged.
+4. In Project settings > General, copy the **Web API Key**, set `var API_KEY = '...';` near the bottom of `journal/edit/index.html`, and push. The key only names the project, so it is fine for it to be public.
+
+```json
+{
+  "rules": {
+    "hoops": {
+      ".read": true,
+      ".indexOn": ["s"],
+      "$entry": {
+        ".write": "!data.exists()",
+        ".validate": "newData.hasChildren(['n', 's', 't'])",
+        "n": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 12" },
+        "s": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500 && newData.val() % 1 === 0" },
+        "t": { ".validate": "newData.isNumber() && newData.val() <= now && newData.val() > now - 60000" },
+        "$other": { ".validate": false }
+      }
+    },
+    "journal": {
+      "drafts": {
+        ".read": "auth != null && auth.uid === 'YOUR_USER_UID'",
+        ".write": "auth != null && auth.uid === 'YOUR_USER_UID'"
+      },
+      "published": {
+        ".read": true
+      },
+      "images": {
+        "$image": {
+          ".read": true,
+          ".validate": "newData.isString() && newData.val().length < 1500000 && newData.val().beginsWith('data:image/')"
+        }
+      },
+      ".write": "auth != null && auth.uid === 'YOUR_USER_UID'"
+    }
+  }
+}
+```
+
+With these rules, visitors can read published entries and load a photo whose address they have been given, and nothing else; drafts, and every kind of saving, need your sign-in. Other people could create an account on the project once Email/Password is on, but an account that is not yours can read and write nothing. To stop that as well, untick "Enable create (sign-up)" under Authentication > Settings > User actions.
+
+Until step 3 is done the journal page simply shows `entries.md` on its own.
+
+The free plan allows 1 GB stored and 10 GB downloaded a month, which is room for a few thousand photos. Deleting an entry in the editor deletes its photos too; a photo removed from the text of an entry that is kept stays in the database until the entry is deleted.
