@@ -15,6 +15,8 @@ The entry, in Markdown.
 
 Edit it in the browser here: https://github.com/troy-wu/troy-wu.github.io/edit/gh-pages/journal/entries.md
 
+While an entry is open, a row of dots along the top of the screen fills in as you scroll, to show how far through it you are.
+
 The note at the top of that file lists what you can use (pull quotes, section breaks, pictures, covers, "Soon:" placeholders, drafts). Pictures go in `journal/images/`. The text above the first title in that file is the note about me beside the list.
 
 ### In the editor
@@ -41,7 +43,7 @@ Edit `journal/entries.md`, then commit and push from the Source Control panel. R
 
 To preview locally, run `python3 -m http.server` in this folder and open http://localhost:8000.
 
-The toys in the corner (the letters T, R, O, Y, a big donut, a ball and a star, plus whatever you add) are soft bodies: two rings of particles each, held together with position-based dynamics, and drawn as shaded characters in the manner of donut.c. Their shapes and tuning constants are at the top of the `Sim` function in `index.html`. Double-tap any toy and it hops and flips; type T R O Y on the keyboard and the letters hop in a wave.
+The toys in the corner (the letters T, R, O, Y, a big donut, a ball and a star, plus whatever you add) are soft bodies: two rings of particles each, held together with position-based dynamics, and drawn as shaded characters in the manner of donut.c. Their shapes and tuning constants are at the top of the `Sim` function in `index.html`. Double-tap any toy and it hops and flips; type T R O Y on the keyboard and the letters hop in a wave. Tap the empty floor and a puff of air blows the nearby toys away from that spot.
 
 The employer logos are trademarks of their owners and are used only to identify where I worked.
 
