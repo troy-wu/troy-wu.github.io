@@ -19,7 +19,7 @@ if (new URLSearchParams(location.search).get('p')) document.documentElement.clas
 <style>
 /* Layout: the list of entries on the left with a note about Troy pinned beside it on the right.
    Opening an entry (?p=the-title) swaps both for one reading column.
-   All the writing lives in entries.md, next to this file. */
+   The writing lives in entries.md, next to this file, and in the database for entries written in the editor (edit/). */
 :root {
   --paper: #ffffff;
   --ink: #000000;
@@ -165,6 +165,7 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
 </main>
 
 <script src="marked.min.js"></script>
+<script src="db.js"></script>
 <script>
 (function () {
   'use strict';
@@ -201,7 +202,7 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   function taste(e) {                       // the first paragraph of words, as plain text, cut at a word
     var parts = e.body.split(/\n\s*\n/), box = el('div'), s = '', i;
-    for (i = 0; i < parts.length && !s; i++) { box.innerHTML = html(parts[i]); if (!box.querySelector('img')) s = box.textContent.replace(/\s+/g, ' ').trim(); }
+    for (i = 0; i < parts.length && !s; i++) { box.textContent = ''; box.appendChild(JournalDB.nodes(parts[i])); if (!box.querySelector('img')) s = box.textContent.replace(/\s+/g, ' ').trim(); }
     return s.length > 190 ? s.slice(0, 190).replace(/\s+\S*$/, '') + '…' : s;
   }
 
@@ -223,7 +224,7 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
   }
   function cover(e, cls) {
     var box = el('span', cls || 'cover');
-    if (e.cover) { var im = el('img'); im.src = e.cover.src; im.alt = ''; im.loading = 'lazy'; box.appendChild(im); }
+    if (e.cover) { var im = el('img'); im.alt = ''; im.loading = 'lazy'; JournalDB.setSrc(im, e.cover.src); box.appendChild(im); }
     else { var cv = el('canvas'); cv.dataset.seed = e.slug; cv.setAttribute('aria-hidden', 'true'); if (e.soon) cv.style.color = 'var(--mute)'; box.appendChild(cv); covers.push(cv); }
     return box;
   }
@@ -256,7 +257,7 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
     head.appendChild(el('h1', '', e.title));
     art.appendChild(head);
     if (!e.cover) art.appendChild(cover(e, 'banner'));
-    prose.innerHTML = html(e.body);
+    prose.appendChild(JournalDB.nodes(e.body));
     var kids = prose.children, k;                                // the drop cap goes on the first paragraph of words
     for (k = 0; k < kids.length; k++) {
       if (kids[k].tagName === 'P' && kids[k].querySelector('img')) continue;   // skip a picture that opens the entry
@@ -292,13 +293,40 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
     ask();
   }
 
+  /* Entries published from the editor, shaped like the ones from entries.md and slotted in by date:
+     each goes above the first written entry that is older than it. */
+  function addPublished(entries, posts) {
+    var taken = {}, i;
+    entries.forEach(function (e) { taken[e.slug] = 1; });
+    posts.forEach(function (p) {
+      var pic = /^!\[([^\]]*)\]\(\s*([^)\s]+)[^)]*\)/.exec(p.body.trim());
+      var base = p.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'entry', slug = base, n = 1;
+      while (taken[slug]) slug = base + '-' + (++n);
+      taken[slug] = 1;
+      var e = { title: p.title, date: p.date, body: p.body.trim(), slug: slug, soon: false, cover: pic ? { alt: pic[1], src: pic[2] } : null, when: p.when };
+      for (i = 0; i < entries.length; i++) {
+        if (entries[i].soon) continue;
+        var w = entries[i].when != null ? entries[i].when : Date.parse(entries[i].date);
+        if (w < e.when) break;                // a date that cannot be read counts as newer, so the entry stays where it was written
+      }
+      entries.splice(i, 0, e);
+    });
+    return entries;
+  }
+
   var want = new URLSearchParams(location.search).get('p');
   if (want) document.getElementById('all').hidden = false;
-  fetch('entries.md', { cache: 'no-cache' }).then(function (r) {
+  // the database is optional: if it is slow, down, or not set up, the page shows entries.md alone
+  var fromDb = Promise.race([
+    JournalDB.published(),
+    new Promise(function (ok) { setTimeout(function () { ok([]); }, 4000); })
+  ]).catch(function () { return []; });
+  Promise.all([fetch('entries.md', { cache: 'no-cache' }).then(function (r) {
     if (!r.ok) throw new Error(r.status);
     return r.text();
-  }).then(function (text) {
-    var parsed = parseEntries(text), i;
+  }), fromDb]).then(function (got) {
+    var parsed = parseEntries(got[0]), i;
+    addPublished(parsed.entries, got[1]);
     var written = parsed.entries.filter(function (e) { return !e.soon; });
     if (!want) {
       if (parsed.about) document.getElementById('about').innerHTML = html(parsed.about);

@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Journal editor – Troy Wu</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="../../favicon.ico" sizes="any">
+<script>
+try { var t = localStorage.getItem('theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+/* The journal editor: sign in, then write. Entries are kept as plain text in the database (see ../db.js).
+   Anyone can open this page, but only Troy's account can read drafts or save anything: the database rules decide that, not this page. */
+:root {
+  --paper: #ffffff; --ink: #000000; --mute: #595959; --line: #d0d0d0;
+  --font-dot: "Doto", "Courier New", monospace;
+  --font-text: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --gutter: clamp(1rem, 3.2vw, 3rem);
+  --measure: 40rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #000000; --ink: #ffffff; --mute: #a6a6a6; --line: #3a3a3a; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #000000; --ink: #ffffff; --mute: #a6a6a6; --line: #3a3a3a; color-scheme: dark; }
+@font-face { font-family: "Doto"; src: url("../../fonts/doto.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("../../fonts/instrument-sans.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 17px; -webkit-text-size-adjust: 100%; }
+body { margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink); font: 400 1rem/1.5 var(--font-text); -webkit-font-smoothing: antialiased; }
+h1, h2, p, ul, figure, blockquote { margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+a { color: inherit; text-decoration-thickness: 0.07em; text-underline-offset: 0.22em; }
+a:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.bar, .page { padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); }
+.bar { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-block: 1.4rem 0; }
+.bar .me { font: 900 1.9rem/1 var(--font-dot); letter-spacing: -0.03em; word-spacing: -0.28em; text-decoration: none; }
+.bar nav { display: flex; gap: 1.2rem; align-items: baseline; font-size: 0.9375rem; }
+.page { max-width: calc(var(--measure) + 2 * var(--gutter)); margin-inline: auto; padding-block: clamp(1.5rem, 5vh, 3rem) 6rem; }
+.mast { font: 900 clamp(2.2rem, 7vw, 3.4rem)/0.9 var(--font-dot); letter-spacing: -0.04em; word-spacing: -0.25em; margin-bottom: 1.8rem; }
+.note { color: var(--mute); }
+.error { font-weight: 600; }
+
+button, .btn { font: 600 0.9375rem/1.2 var(--font-text); color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 0; padding: 0.55rem 0.9rem; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+button.main { background: var(--ink); color: var(--paper); }
+button.main:hover:not(:disabled) { background: var(--paper); color: var(--ink); }
+button.plain { border: 0; padding: 0; font-weight: 400; text-decoration: underline; text-decoration-thickness: 0.07em; text-underline-offset: 0.22em; }
+button:disabled { opacity: 0.45; cursor: default; }
+input, textarea { font: inherit; color: inherit; background: none; border: 0; border-radius: 0; padding: 0; width: 100%; }
+input:focus, textarea:focus { outline: none; }
+
+/* ---------- signing in ---------- */
+.login { display: grid; gap: 1rem; max-width: 22rem; }
+.login label { display: grid; gap: 0.25rem; font-size: 0.9375rem; font-weight: 600; }
+.login input { border: 2px solid var(--ink); padding: 0.55rem 0.7rem; font-weight: 400; font-size: 1rem; }
+.login input:focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+.login button { justify-self: start; }
+
+/* ---------- the list of entries ---------- */
+.list-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
+.rows { list-style: none; border-top: 2px solid var(--ink); }
+.rows li { border-bottom: 1px solid var(--line); }
+.rows a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.2rem 1rem; padding: 0.85rem 0; text-decoration: none; }
+.rows a:hover { background: none; color: inherit; }
+.rows a:hover b { text-decoration: underline; text-decoration-thickness: 0.07em; text-underline-offset: 0.18em; }
+.rows b { font-weight: 600; font-size: 1.15rem; line-height: 1.25; }
+.rows .state { font-size: 0.875rem; align-self: center; white-space: nowrap; }
+.rows .state.live::before { content: "● "; }
+.rows .state.draft { color: var(--mute); }
+.rows .when { grid-column: 1 / -1; color: var(--mute); font-size: 0.875rem; }
+
+/* ---------- writing ---------- */
+.back { display: inline-block; margin-bottom: 1.4rem; font-size: 0.9375rem; }
+#title { font-size: clamp(1.8rem, 5.5vw, 2.5rem); line-height: 1.1; font-weight: 600; letter-spacing: -0.022em; }
+#date { width: auto; color: var(--mute); margin: 0.6rem 0 1.1rem; font-size: 0.9375rem; }
+::placeholder { color: var(--mute); opacity: 0.7; }
+.tools { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0; background: var(--paper); border-block: 2px solid var(--ink); }
+.tools .gap { flex: 1; }
+.tools button { padding: 0.45rem 0.75rem; }
+#body { display: block; min-height: 30vh; margin-top: 1.2rem; font-size: 1.1rem; line-height: 1.65; resize: none; overflow: hidden; }
+.page.dropping #body { outline: 2px dashed var(--ink); outline-offset: 6px; }
+.thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.2rem; }
+.thumbs button { width: 4.5rem; height: 4.5rem; padding: 0; border: 1px solid var(--line); overflow: hidden; background: none; }
+.thumbs img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hint { margin-top: 1.2rem; font-size: 0.875rem; color: var(--mute); }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: 0.9375rem; }
+.foot .gap { flex: 1; }
+#status { min-height: 1.5em; margin-top: 0.8rem; font-size: 0.9375rem; color: var(--mute); }
+#status.error { color: var(--ink); }
+
+/* the preview borrows the look of an entry on the journal page */
+.prose { margin-top: 1.2rem; font-size: 1.1875rem; line-height: 1.68; display: flow-root; min-height: 45vh; }
+.prose > * + * { margin-top: 1.25em; }
+.prose h2 { font-size: 1.35em; line-height: 1.2; font-weight: 600; margin-top: 2em; }
+.prose h3 { font-size: 1.1em; font-weight: 650; margin-top: 1.8em; }
+.prose blockquote { font-size: 1.3em; line-height: 1.32; font-weight: 550; padding-left: 1.1rem; border-left: 3px solid var(--ink); margin-block: 1.6em; }
+.prose hr { border: 0; height: 6px; width: 42px; margin: 2.6em auto; background: linear-gradient(90deg, var(--ink) 6px, transparent 6px) 0 0 / 18px 6px repeat-x; }
+.prose img { display: block; max-width: 100%; height: auto; margin-inline: auto; }
+.prose img + br { display: none; }
+.prose img ~ em { display: block; margin-top: 0.6rem; font-size: 0.82em; line-height: 1.45; color: var(--mute); font-style: normal; }
+.prose ul, .prose ol { padding-left: 1.3em; }
+
+@media (max-width: 480px) {
+  .tools { gap: 0.35rem; }
+  .tools .gap { display: none; }
+  .tools button { flex: 1 1 auto; padding: 0.5rem 0.25rem; font-size: 0.8125rem; white-space: nowrap; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="me" href="../../">Troy Wu</a>
+  <nav aria-label="Editor"><a href="../">Journal</a><button type="button" class="plain" id="sign-out" hidden>Sign out</button></nav>
+</header>
+
+<main class="page" id="page">
+  <!-- before the editor is switched on -->
+  <section id="v-setup" hidden>
+    <h1 class="mast">Journal editor</h1>
+    <p class="note">The editor is not switched on yet. The README has the four steps under "The journal editor".</p>
+  </section>
+
+  <!-- signing in -->
+  <section id="v-login" hidden>
+    <h1 class="mast">Journal editor</h1>
+    <form class="login" id="login">
+      <label>Email <input type="email" id="email" autocomplete="username" required></label>
+      <label>Password <input type="password" id="password" autocomplete="current-password" required></label>
+      <button type="submit" class="main" id="login-go">Sign in</button>
+      <p class="error" id="login-msg" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- every entry, drafts and published -->
+  <section id="v-list" hidden>
+    <div class="list-top"><h1 class="mast" style="margin:0">Entries</h1><button type="button" class="main" id="new">New entry</button></div>
+    <ul class="rows" id="rows"></ul>
+    <p class="note" id="list-msg" role="status"></p>
+  </section>
+
+  <!-- one entry -->
+  <section id="v-edit" hidden>
+    <a class="back" href="#/">← All entries</a>
+    <input id="title" type="text" placeholder="Title" aria-label="Title" autocomplete="off">
+    <input id="date" type="date" aria-label="Date shown on the entry">
+    <div class="tools">
+      <button type="button" id="photo">Add photo</button>
+      <button type="button" id="preview" aria-pressed="false">Preview</button>
+      <span class="gap"></span>
+      <button type="button" id="save">Save draft</button>
+      <button type="button" class="main" id="publish">Publish</button>
+    </div>
+    <input id="file" type="file" accept="image/*" multiple hidden>
+    <textarea id="body" placeholder="Start writing…" aria-label="The entry" spellcheck="true"></textarea>
+    <div class="prose" id="shown" hidden></div>
+    <div class="thumbs" id="thumbs" aria-label="Photos in this entry"></div>
+    <p id="status" role="status"></p>
+    <p class="hint">Photos: press Add photo, paste one, or drop it on the page. A line of *italic* right under a photo is its caption. A blank line starts a paragraph; **bold**, ## heading, &gt; quote and --- (a break) work too.</p>
+    <div class="foot">
+      <span id="state" class="note"></span>
+      <span class="gap"></span>
+      <button type="button" class="plain" id="unpublish" hidden>Unpublish</button>
+      <button type="button" class="plain" id="delete">Delete entry</button>
+    </div>
+  </section>
+  <noscript><p class="note">The editor needs JavaScript.</p></noscript>
+</main>
+
+<script src="../marked.min.js"></script>
+<script src="../db.js"></script>
+<script>
+(function () {
+  'use strict';
+  /* The project's Web API key (Firebase console > Project settings > General). It only says which project to
+     sign in to; it is meant to be public. Who may write is decided by the database rules in the README. */
+  var API_KEY = 'AIzaSyCgXqG4FRiYafsvPDW0Mh4RCVnU7o5BRQg';
+  var SIGN_IN = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=';
+  var REFRESH = 'https://securetoken.googleapis.com/v1/token?key=';
+  var PHOTO_EDGE = 1600, PHOTO_MAX = 1400000;      // longest side in pixels; largest stored size in characters
+
+  var DB = window.JournalDB, $ = function (id) { return document.getElementById(id); };
+  var views = ['setup', 'login', 'list', 'edit'];
+  function show(name) { views.forEach(function (v) { $('v-' + v).hidden = v !== name; }); $('sign-out').hidden = name === 'setup' || name === 'login'; window.scrollTo(0, 0); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function store(key, val) { try { if (val == null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
+  function newId(prefix) { var a = new Uint8Array(8); crypto.getRandomValues(a); return prefix + Date.now().toString(36) + Array.prototype.map.call(a, function (b) { return (b % 36).toString(36); }).join(''); }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
+  /* ---------- the session: sign in once, then stay signed in on this browser ---------- */
+  var session = stored('journalSession');     // { refresh, id, exp }
+  function post(url, body, form) {
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': form ? 'application/x-www-form-urlencoded' : 'application/json' }, body: form ? body : JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j && j.error && j.error.message || r.status); return j; }); });
+  }
+  function signIn(email, password) {
+    return post(SIGN_IN + API_KEY, { email: email, password: password, returnSecureToken: true }).then(function (j) {
+      session = { refresh: j.refreshToken, id: j.idToken, exp: Date.now() + j.expiresIn * 1000 }; store('journalSession', session);
+    });
+  }
+  function signOut() { session = null; store('journalSession', null); posts = {}; cur = null; show('login'); }
+  function token() {                           // a token that is good for at least another minute
+    if (!session) return Promise.reject(new Error('signed out'));
+    if (session.exp - Date.now() > 60000) return Promise.resolve(session.id);
+    return post(REFRESH + API_KEY, 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(session.refresh), true).then(function (j) {
+      session = { refresh: j.refresh_token, id: j.id_token, exp: Date.now() + j.expires_in * 1000 }; store('journalSession', session);
+      return session.id;
+    }, function (err) { if (/TOKEN_EXPIRED|INVALID_REFRESH_TOKEN|USER_DISABLED|USER_NOT_FOUND/.test(err.message)) signOut(); throw err; });
+  }
+  /* write to the database; "PATCH" on the journal itself changes several places at once (all or nothing) */
+  function write(method, path, value) {
+    return token().then(function (t) {
+      return fetch(DB.url + (path ? '/' + path : '') + '.json?auth=' + encodeURIComponent(t), { method: method, body: JSON.stringify(value) });
+    }).then(function (r) {
+      if (r.status === 401 || r.status === 403) throw new Error('not allowed');
+      if (!r.ok) throw new Error('The database answered ' + r.status + '.');
+    });
+  }
+  function why(err) {
+    var m = String(err && err.message || err);
+    if (/INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND|INVALID_PASSWORD|INVALID_EMAIL/.test(m)) return 'Wrong email or password.';
+    if (/TOO_MANY_ATTEMPTS/.test(m)) return 'Too many tries. Wait a few minutes and try again.';
+    if (/not allowed|^401$|^403$/.test(m)) return 'This account is not allowed to edit the journal.';
+    if (/Failed to fetch|NetworkError|Load failed/.test(m)) return 'No connection. Your text is kept in this browser; try again when you are back online.';
+    return m;
+  }
+
+  /* ---------- the list ---------- */
+  var posts = {}, cur = null;                  // posts: the drafts as saved; cur: the entry being written
+  function loadPosts() {
+    return token().then(function (t) { return DB.getJSON('drafts', t); }).then(function (all) { posts = all || {}; });
+  }
+  function stateOf(p) {
+    var ahead = !!p.published && (p.updated || 0) > (p.publishedAt || 0);      // saved as a draft since it was last published
+    if (!p.published) return ['draft', 'Draft', false];
+    return ['live', ahead ? 'Published, with newer edits saved as a draft' : 'Published', ahead];
+  }
+  function showList() {
+    var rows = $('rows'), ids = Object.keys(posts).sort(function (a, b) { return (posts[b].updated || 0) - (posts[a].updated || 0); });
+    rows.textContent = '';
+    ids.forEach(function (id) {
+      var p = posts[id], a = el('a'), s = stateOf(p);
+      a.href = '#/e/' + id;
+      a.appendChild(el('b', '', p.title || 'Untitled'));
+      a.appendChild(el('span', 'state ' + s[0], s[0] === 'live' ? 'Published' : 'Draft'));
+      a.appendChild(el('span', 'when', (DB.niceDate(p.date) || 'No date') + (s[2] ? ' · newer edits not published yet' : '')));
+      var li = el('li'); li.appendChild(a); rows.appendChild(li);
+    });
+    $('list-msg').textContent = ids.length ? '' : 'Nothing written yet. Press New entry to start.';
+    show('list');
+  }
+
+  /* ---------- one entry ---------- */
+  var title = $('title'), date = $('date'), body = $('body'), status = $('status');
+  var dirty = false, busy = false, uploads = [], previewing = false, armed = null;
+  function say(text, bad) { status.textContent = text || ''; status.className = bad ? 'error' : ''; }
+  function grow() { body.style.height = 'auto'; body.style.height = Math.max(body.scrollHeight, 200) + 'px'; }
+  function picsIn(text) { var ids = [], m, re = /\(db:([\w-]+)\)/g; while ((m = re.exec(text))) if (ids.indexOf(m[1]) < 0) ids.push(m[1]); return ids; }
+
+  function open(id) {
+    var p = posts[id], isNew = !p, kept = stored('journalUnsaved:' + id);
+    cur = { id: id, isNew: isNew, saved: p || { title: '', date: today(), body: '', published: false } };
+    title.value = cur.saved.title || ''; date.value = cur.saved.date || ''; body.value = cur.saved.body || '';
+    dirty = false; say('');
+    if (kept && kept.at > (cur.saved.updated || 0) && (kept.title !== title.value || kept.body !== body.value || kept.date !== date.value)) {
+      title.value = kept.title; date.value = kept.date; body.value = kept.body; dirty = true;
+      say('Picked up where you left off: this text was not saved last time.');
+    }
+    setPreview(false); refresh(); show('edit'); grow();
+    if (isNew) title.focus();
+  }
+  function refresh() {                         // the buttons, the state line and the thumbnails
+    var p = cur.saved, live = !!p.published;
+    $('publish').textContent = live ? 'Publish changes' : 'Publish';
+    $('unpublish').hidden = !live;
+    $('state').textContent = cur.isNew ? 'Not saved yet' : stateOf(p)[1];
+    disarm();
+    var box = $('thumbs'); box.textContent = '';
+    picsIn(body.value).forEach(function (id) {
+      var b = el('button'), img = el('img'); b.type = 'button'; b.title = 'Find this photo in the text'; img.alt = 'Photo in this entry';
+      DB.setSrc(img, 'db:' + id); b.appendChild(img);
+      b.addEventListener('click', function () {
+        setPreview(false);
+        var at = body.value.indexOf('(db:' + id + ')'), from = body.value.lastIndexOf('![', at);
+        body.focus(); body.setSelectionRange(from < 0 ? at : from, at + id.length + 5);
+      });
+      box.appendChild(b);
+    });
+  }
+  function touched() {
+    dirty = true;
+    if (cur) store('journalUnsaved:' + cur.id, { title: title.value, date: date.value, body: body.value, at: Date.now() });
+    if (status.className !== 'error') say('');
+  }
+  title.addEventListener('input', touched); date.addEventListener('input', touched);
+  body.addEventListener('input', function () { touched(); grow(); if (picsIn(body.value).length !== $('thumbs').children.length) refresh(); });
+
+  function setPreview(on) {
+    previewing = on;
+    $('preview').setAttribute('aria-pressed', on ? 'true' : 'false'); $('preview').textContent = on ? 'Write' : 'Preview';
+    var shown = $('shown'); shown.textContent = '';
+    if (on) shown.appendChild(DB.nodes(body.value));
+    shown.hidden = !on; body.hidden = on; $('thumbs').hidden = on;
+    if (!on) grow();
+  }
+  $('preview').addEventListener('click', function () { setPreview(!previewing); });
+
+  /* Save. publish: true puts the same text where visitors can read it; false only keeps the working copy. */
+  function save(publish) {
+    if (busy || !cur) return Promise.resolve(false);
+    busy = true; lock(true); say(uploads.length ? 'Finishing the photos…' : (publish ? 'Publishing…' : 'Saving…'));
+    var id = cur.id, now = Date.now(), was = cur.saved;
+    return Promise.all(uploads.slice()).then(function () {
+      var draft = {
+        title: title.value.trim(), date: date.value || '', body: body.value,
+        created: was.created || now, updated: now,
+        published: publish || !!was.published, publishedAt: publish ? now : (was.publishedAt || null)
+      };
+      var change = {}; change['drafts/' + id] = draft;
+      if (publish) change['published/' + id] = { title: draft.title || 'Untitled', date: draft.date, body: draft.body.trim(), publishedAt: now };
+      return write('PATCH', '', change).then(function () {
+        posts[id] = draft; cur.saved = draft; cur.isNew = false; dirty = false; store('journalUnsaved:' + id, null);
+        refresh();
+        if (publish) { status.className = ''; status.textContent = 'Published. '; var a = el('a', '', 'See the journal'); a.href = '../'; status.appendChild(a); }
+        else say(draft.published ? 'Draft saved. The published version has not changed.' : 'Draft saved.');
+        return true;
+      });
+    }).catch(function (err) { say('Not saved. ' + why(err), true); return false; }).then(function (ok) { busy = false; lock(false); return ok; });
+  }
+  function lock(on) { ['save', 'publish', 'unpublish', 'delete'].forEach(function (b) { $(b).disabled = on; }); }
+  $('save').addEventListener('click', function () { save(false); });
+  $('publish').addEventListener('click', function () { save(true); });
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && !$('v-edit').hidden) { e.preventDefault(); save(false); }
+  });
+
+  /* Unpublish and Delete ask once more before doing anything: the first press arms the button, the second does it. */
+  function disarm() { if (armed) { armed.btn.textContent = armed.label; clearTimeout(armed.timer); armed = null; } }
+  function twice(btn, ask, act) {
+    btn.addEventListener('click', function () {
+      if (armed && armed.btn === btn) { disarm(); act(); return; }
+      disarm();
+      armed = { btn: btn, label: btn.textContent, timer: setTimeout(disarm, 5000) };
+      btn.textContent = ask;
+    });
+  }
+  twice($('unpublish'), 'Press again to take it off the site', function () {
+    if (busy) return; busy = true; lock(true); say('Unpublishing…');
+    var id = cur.id, change = {}; change['published/' + id] = null; change['drafts/' + id + '/published'] = false; change['drafts/' + id + '/publishedAt'] = null;
+    write('PATCH', '', change).then(function () {
+      cur.saved.published = false; cur.saved.publishedAt = null; refresh(); say('Unpublished. It is a draft again.');
+    }, function (err) { say('Still published. ' + why(err), true); }).then(function () { busy = false; lock(false); });
+  });
+  twice($('delete'), 'Press again to delete it for good', function () {
+    if (busy) return;
+    var id = cur.id;
+    if (cur.isNew) { store('journalUnsaved:' + id, null); dirty = false; location.hash = '#/'; return; }
+    busy = true; lock(true); say('Deleting…');
+    var change = {}; change['drafts/' + id] = null; change['published/' + id] = null;
+    picsIn((cur.saved.body || '') + body.value).forEach(function (pid) { change['images/' + pid] = null; });
+    write('PATCH', '', change).then(function () {
+      delete posts[id]; store('journalUnsaved:' + id, null); dirty = false; location.hash = '#/';
+    }, function (err) { say('Not deleted. ' + why(err), true); }).then(function () { busy = false; lock(false); });
+  });
+
+  /* ---------- photos: shrink in the browser, store in the database, drop a line into the text ---------- */
+  function shrink(file) {
+    var load = window.createImageBitmap
+      ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return viaTag(file); })
+      : viaTag(file);
+    return load.then(function (img) {
+      var edge = PHOTO_EDGE, q = 0.82, data, tries = 0;
+      do {
+        var k = Math.min(1, edge / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * k)); cv.height = Math.max(1, Math.round(img.height * k));
+        var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+        data = cv.toDataURL('image/jpeg', q);
+        edge = Math.round(edge * 0.8); q -= 0.06;                      // still too big: go a little smaller and try again
+      } while (data.length > PHOTO_MAX && ++tries < 6);
+      if (img.close) img.close();
+      if (data.length > PHOTO_MAX || data.indexOf('data:image/jpeg') !== 0) throw new Error('That photo could not be made small enough.');
+      return data;
+    });
+  }
+  function viaTag(file) {
+    return new Promise(function (ok, no) {
+      var img = new Image(), url = window.URL.createObjectURL(file);
+      img.onload = function () { window.URL.revokeObjectURL(url); ok(img); };
+      img.onerror = function () { window.URL.revokeObjectURL(url); no(new Error('This browser could not read that photo.')); };
+      img.src = url;
+    });
+  }
+  function insert(text) {                      // on its own paragraph, where the cursor is
+    if (previewing) setPreview(false);
+    var v = body.value, a = body.selectionStart, b = body.selectionEnd;
+    var before = v.slice(0, a), after = v.slice(b);
+    var lead = !before || /\n\n$/.test(before) ? '' : /\n$/.test(before) ? '\n' : '\n\n';
+    var tail = /^\n\n/.test(after) ? '' : /^\n/.test(after) ? '\n' : '\n\n';
+    body.value = before + lead + text + tail + after;
+    var at = (before + lead + text + tail).length; body.setSelectionRange(at, at);
+    touched(); grow();
+  }
+  function addPhotos(files) {
+    if (!cur) return;
+    Array.prototype.filter.call(files, function (f) { return /^image\//.test(f.type); }).reduce(function (chain, file) {
+      return chain.then(function () {
+        say('Adding photo…');
+        return shrink(file).then(function (data) {
+          var id = newId('p'), line = '![](db:' + id + ')';
+          DB.remember(id, data); insert(line); refresh();
+          var up = write('PUT', 'images/' + id, data).then(function () { say('Photo added.'); }, function (err) {
+            body.value = body.value.replace(line + '\n\n', '').replace(line, ''); touched(); grow(); refresh();
+            say('That photo was not added. ' + why(err), true);
+          }).then(function () { uploads.splice(uploads.indexOf(up), 1); });
+          uploads.push(up);
+          return up;
+        }, function (err) { say(why(err), true); });
+      });
+    }, Promise.resolve());
+  }
+  $('photo').addEventListener('click', function () { $('file').click(); });
+  $('file').addEventListener('change', function () { addPhotos(this.files); this.value = ''; });
+  body.addEventListener('paste', function (e) {
+    var files = e.clipboardData && e.clipboardData.files;
+    if (files && files.length && Array.prototype.some.call(files, function (f) { return /^image\//.test(f.type); })) { e.preventDefault(); addPhotos(files); }
+  });
+  var page = $('page');
+  function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
+  page.addEventListener('dragover', function (e) { if (cur && !$('v-edit').hidden && hasFiles(e)) { e.preventDefault(); page.classList.add('dropping'); } });
+  page.addEventListener('dragleave', function () { page.classList.remove('dropping'); });
+  page.addEventListener('drop', function (e) {
+    page.classList.remove('dropping');
+    if (cur && !$('v-edit').hidden && hasFiles(e)) { e.preventDefault(); addPhotos(e.dataTransfer.files); }
+  });
+
+  /* ---------- getting around ---------- */
+  function route() {
+    if (!session) { show('login'); return; }
+    var m = /^#\/e\/([\w-]+)$/.exec(location.hash), to = m ? m[1] : null;
+    if (cur && cur.id === to) return;
+    if (cur && dirty) {                        // leaving an entry with unsaved text: keep it as a draft first
+      var from = cur.id;
+      save(false).then(function (ok) {
+        if (ok) route();
+        else if (cur && cur.id === from) location.hash = '#/e/' + from;      // could not save, so stay on it
+      });
+      return;
+    }
+    if (to) open(to); else { cur = null; showList(); }
+  }
+  window.addEventListener('hashchange', route);
+  window.addEventListener('beforeunload', function (e) { if (dirty || uploads.length) { e.preventDefault(); e.returnValue = ''; } });
+  $('new').addEventListener('click', function () { location.hash = '#/e/' + newId('e'); });
+  $('sign-out').addEventListener('click', signOut);
+
+  function start() {                           // after signing in, or on coming back already signed in
+    return loadPosts().then(route, function (err) {
+      if (/^40[13]$/.test(err.message)) { signOut(); $('login-msg').textContent = 'Signed in, but this account is not allowed to edit the journal.'; }
+      else if (err.message !== 'signed out') { show('list'); $('rows').textContent = ''; $('list-msg').textContent = 'The entries did not load. ' + why(err) + ' Reload to try again.'; }
+      else show('login');
+    });
+  }
+  $('login').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var go = $('login-go'), msg = $('login-msg');
+    go.disabled = true; msg.textContent = '';
+    signIn($('email').value.trim(), $('password').value).then(function () { $('password').value = ''; return start(); })
+      .catch(function (err) { msg.textContent = why(err); }).then(function () { go.disabled = false; });
+  });
+
+  if (!API_KEY) show('setup');
+  else if (session) start();
+  else show('login');
+})();
+</script>
+</body>
+</html>
