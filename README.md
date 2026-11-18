@@ -15,6 +15,8 @@ The entry, in Markdown.
 
 Edit it in the browser here: https://github.com/troy-wu/troy-wu.github.io/edit/gh-pages/journal/entries.md
 
+While an entry is open, a row of dots along the top of the screen fills in as you scroll, to show how far through it you are.
+
 The note at the top of that file lists what you can use (pull quotes, section breaks, pictures, covers, "Soon:" placeholders, drafts). Pictures go in `journal/images/`. The text above the first title in that file is the note about me beside the list.
 
 ### In VS Code
