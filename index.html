@@ -836,7 +836,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     ctx.clearRect(0, 0, W, HH);
     ctx.font = FONT.replace('SIZE', fs);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (game) drawCourt();
+    if (game) { drawCourt(); drawTrail(); }
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
     if (game) drawHoop();                          // rim and net go over the ball, so it drops into them
     if (puffs.length) drawPuffs();
@@ -1053,7 +1053,18 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (game.ball) sim.remove(game.ball);
     var r = hoop.r, b = sim.add('ball', Math.max(world.homeL + r + 8, hoop.line - hoop.open * 1.5), world.floor - r * 5, r, 0, 0);
     b.entered = true; b.live = true;
-    game.ball = b; game.phase = 'aim'; wake();
+    game.ball = b; game.phase = 'aim'; game.trail = []; wake();
+  }
+  // the path of the shot, as a dotted arc of characters that stays until the next ball
+  function drawTrail() {
+    var t = game.trail, i, n = t ? t.length : 0;
+    if (!n) return;
+    ctx.font = FONT.replace('SIZE', 13); ctx.fillStyle = ink;
+    for (i = 0; i < n; i++) {
+      ctx.globalAlpha = 0.15 + 0.4 * (i + 1) / n;          // fainter toward where it was thrown from
+      ctx.fillText(t[i].made ? '*' : '.', t[i].x, t[i].y);
+    }
+    ctx.globalAlpha = 1; ctx.font = FONT.replace('SIZE', fs);
   }
   function endRound() {
     game.over = true; game.phase = 'over';
@@ -1119,8 +1130,11 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (!b) return;
     if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; b.rim = false; }
     else if (game.phase === 'flight') {
+      var tl = game.trail, end = tl[tl.length - 1];
+      if (!end || Math.hypot(b.cx - end.x, b.cy - end.y) > 16) tl.push({ x: b.cx, y: b.cy });   // a dot every few steps of the flight
       if (b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1) {
         game.made++; game.streak++; game.phase = 'done'; game.t = now; showHud(false, true);
+        game.trail.forEach(function (q) { q.made = true; });             // a make turns the dots into stars
         pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: b.rim ? 'In!' : 'Swish!' });   // nothing but net
         if (game.streak > 1) pops.push({ x: Math.min(hoop.x0 - 4, world.w - 44), y: hoop.y - 46, t: now, text: game.streak + ' in a row' });
       } else if ((b.down && b.sp < 500) || now - game.t > 4500) {   // a miss costs a life
