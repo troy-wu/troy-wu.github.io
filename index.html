@@ -974,10 +974,22 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   function placeHoop() {
     var r = Math.max(13, Math.min((world.w - world.homeL) * 0.05, world.floor * 0.06, 30));
     hoop.r = r; hoop.open = r * 3.1; hoop.x1 = world.w; hoop.x0 = world.w - hoop.open;
-    hoop.y = Math.max(60, world.floor * 0.5);
+    hoop.y = hoopHeight();
     hoop.line = world.homeL + (world.w - world.homeL) * 0.5;
     world.pegs.length = 0; world.pegs.push({ x: hoop.x0, y: hoop.y, r: 4 });
     makeNet();
+  }
+  // every few makes the hoop slides to a new height; these are its stops, as a share of the floor height
+  var MOVE_EVERY = 3, STOPS = [0.5, 0.34, 0.62, 0.27, 0.56, 0.4];
+  function hoopHeight() {
+    var y = world.floor * STOPS[(game ? game.stop : 0) % STOPS.length];
+    return Math.max(60, Math.min(y, world.floor - hoop.open * 1.7));
+  }
+  // slide the rim, its peg and the hanging net together, without rebuilding them
+  function moveHoop(y) {
+    var dy = y - hoop.y, i;
+    hoop.y = y; world.pegs[0].y = y;
+    for (i = 0; i < net.y.length; i++) { net.y[i] += dy; net.py[i] += dy; net.ry[i] += dy; }
   }
   // the net: a few rows of knots hanging from the rim, joined by short cords, pushed aside by whatever falls through
   function makeNet() {
@@ -1118,7 +1130,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     while (timers.length) clearTimeout(timers.pop());
     pending = 0; bodies.length = 0; world.held = null; pops = [];
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
-    game = { lives: LIVES, made: 0, streak: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1, named: false };
+    game = { lives: LIVES, made: 0, streak: 0, stop: 0, ball: null, phase: 'aim', t: 0, over: false, place: -1, named: false };
     fetchBoard();
     placeHoop();
     ui.hint.textContent = 'Shoot from behind the dotted line. Miss and you lose a life.';
@@ -1149,10 +1161,17 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         game.trail.forEach(function (q) { q.made = true; });             // a make turns the dots into stars
         pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: b.rim ? 'In!' : 'Swish!' });   // nothing but net
         if (game.streak > 1) pops.push({ x: Math.min(hoop.x0 - 4, world.w - 44), y: hoop.y - 46, t: now, text: game.streak + ' in a row' });
+        if (game.made % MOVE_EVERY === 0) {
+          game.stop++;
+          pops.push({ x: Math.min(hoop.x0 - 4, world.w - 80), y: hoop.y + hoop.open * 1.4, t: now, text: hoopHeight() < hoop.y ? 'The hoop moves up' : 'The hoop moves down' });
+        }
       } else if ((b.down && b.sp < 500) || now - game.t > 4500) {   // a miss costs a life
         game.lives--; game.streak = 0; game.phase = 'done'; game.t = now - 250; showHud(true, false);
         pops.push({ x: Math.max(world.homeL + 24, Math.min(world.w - 24, b.cx)), y: b.cy - b.R - 12, t: now, text: 'Miss' });
       }
+    } else if (game.phase === 'done' && game.lives > 0 && now - game.t > 450 && hoop.y !== hoopHeight()) {   // once the ball has dropped, the hoop glides over
+      var to = hoopHeight();
+      moveHoop(reduce || Math.abs(to - hoop.y) < 0.5 ? to : hoop.y + (to - hoop.y) * 0.12);
     } else if (game.phase === 'done' && now - game.t > (game.lives > 0 ? 750 : 1150)) {
       if (game.lives <= 0) endRound(); else serve();
     }
