@@ -43,7 +43,7 @@ Edit `journal/entries.md`, then commit and push from the Source Control panel. R
 
 To preview locally, run `python3 -m http.server` in this folder and open http://localhost:8000.
 
-The toys in the corner (the letters T, R, O, Y, a big donut, a ball and a star, plus whatever you add) are soft bodies: two rings of particles each, held together with position-based dynamics, and drawn as shaded characters in the manner of donut.c. Their shapes and tuning constants are at the top of the `Sim` function in `index.html`. Double-tap any toy and it hops and flips; type T R O Y on the keyboard and the letters hop in a wave. Tap the empty floor and a puff of air blows the nearby toys away from that spot. The "Heart" button drops a soft heart, the classic heart curve walked in even steps like the letters.
+The toys in the corner (the letters T, R, O, Y, a big donut, a ball and a star, plus whatever you add) are soft bodies: two rings of particles each, held together with position-based dynamics, and drawn as shaded characters in the manner of donut.c. Their shapes and tuning constants are at the top of the `Sim` function in `index.html`. Double-tap any toy and it hops and flips; type T R O Y on the keyboard and the letters hop in a wave. Tap the empty floor and a puff of air blows the nearby toys away from that spot. The "Heart" button drops a soft heart, the classic heart curve walked in even steps like the letters. The arrow keys bump the corner like a pinball table: left and right shove the toys sideways, up makes them jump, and down thumps them flat.
 
 The employer logos are trademarks of their owners and are used only to identify where I worked.
 
