@@ -1318,6 +1318,24 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     });
   });
 
+  /* ---------- nudges: the arrow keys bump the toy corner like a pinball table ---------- */
+  var BUMP = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  window.addEventListener('keydown', function (e) {
+    var d = BUMP[e.key];
+    if (!d || e.repeat || game || world.held || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    var i, k, b, ux, uy;
+    for (i = 0; i < bodies.length; i++) {
+      b = bodies[i];
+      if (!b.entered) continue;
+      // sideways: a shove and a little lift; up: a jump; down: a thump that squashes them, then a small bounce
+      ux = d[0] * (420 + Math.random() * 160) * Math.min(1.5, Math.sqrt(b.w));   // lighter things slide further
+      uy = d[1] < 0 ? -(650 + Math.random() * 300) : d[1] > 0 ? 500 : -(120 + Math.random() * 90);
+      for (k = 0; k < 2 * N; k++) { b.vx[k] += ux; b.vy[k] += uy; }
+    }
+    if (!reduce && canvas.animate) canvas.animate([{ transform: 'none' }, { transform: 'translate(' + d[0] * 3 + 'px,' + d[1] * 3 + 'px)' }, { transform: 'none' }], 140);   // the table jolts
+    wake();
+  });
+
   /* ---------- gusts: tap the empty floor and a puff of air pushes the toys away from that spot ---------- */
   var puffs = [];
   window.addEventListener('pointerdown', function (e) {
