@@ -1404,7 +1404,16 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('theme', next); } catch (err) {}
     colours(); draw();
+    if (!game) bodies.forEach(function (b) {               // the lights change and the toys jump in surprise, a beat apart
+      if (b.entered) timers.push(setTimeout(function () { startle(b); }, 40 + Math.random() * 140));
+    });
   });
+  function startle(b) {                                    // a small straight-up jump with a wobble, no flip
+    var k, up = -(520 + Math.random() * 220), side = (Math.random() - 0.5) * 160;
+    sim.centroid(b);
+    for (k = 0; k < 2 * N; k++) { b.vx[k] += side + (k % 2 ? 40 : -40); b.vy[k] += up; }
+    wake();
+  }
   document.getElementById('toy-reset').addEventListener('click', function () {
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
     start();
