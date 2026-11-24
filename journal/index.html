@@ -214,7 +214,7 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
     for (i = 0; i < cv.dataset.seed.length; i++) { s ^= cv.dataset.seed.charCodeAt(i); s = Math.imul(s, 16777619); }
     function rnd() { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
-    var cell = 7, dot = 5, a1 = rnd() * 6.28, a2 = rnd() * 6.28, f1 = 0.05 + rnd() * 0.08, f2 = 0.03 + rnd() * 0.06, p1 = rnd() * 6.28, p2 = rnd() * 6.28;
+    var cell = 7, dot = 5, a1 = rnd() * 6.28, a2 = rnd() * 6.28, f1 = 0.05 + rnd() * 0.08, f2 = 0.03 + rnd() * 0.06, p1 = rnd() * 6.28 + (cv._t || 0), p2 = rnd() * 6.28 - 0.7 * (cv._t || 0);
     var cx = (0.2 + rnd() * 0.6) * w / cell, cy = (0.2 + rnd() * 0.6) * h / cell, fr = 0.12 + rnd() * 0.2, lift = 0.38 + rnd() * 0.2;
     g.fillStyle = getComputedStyle(cv).color;
     for (y = 0; y * cell < h; y++) for (x = 0; x * cell < w; x++) {
@@ -228,12 +228,35 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
     else { var cv = el('canvas'); cv.dataset.seed = e.slug; cv.setAttribute('aria-hidden', 'true'); if (e.soon) cv.style.color = 'var(--mute)'; box.appendChild(cv); covers.push(cv); }
     return box;
   }
-  function paint() { covers.forEach(drawCover); }
+  function paint() { covers.forEach(function (cv) { drawCover(cv); }); }
+
+  /* Point at a dot cover (or tap the banner over an entry) and its pattern drifts, like ripples on water.
+     It speeds up gently, slows down gently when you leave, and keeps where it drifted to. */
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function stir(cv, on) {
+    cv._on = on;
+    if (!on || cv._run || still.matches) return;
+    var last = performance.now(), v = cv._v || 0; cv._run = true;
+    (function step(now) {
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      v += ((cv._on ? 1 : 0) - v) * Math.min(1, dt * 4);
+      cv._t = (cv._t || 0) + v * dt * 1.6; cv._v = v;
+      drawCover(cv);
+      if (cv._on || v > 0.01) requestAnimationFrame(step); else cv._run = false;
+    })(last);
+  }
+  function stirOn(host, cv) {
+    host.addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') stir(cv, true); });
+    host.addEventListener('pointerleave', function () { stir(cv, false); });
+    host.addEventListener('focus', function () { stir(cv, true); });
+    host.addEventListener('blur', function () { stir(cv, false); });
+  }
 
   function card(e) {
     var c = el(e.soon ? 'div' : 'a', 'card'), text = el('span', 'card-text');
     if (!e.soon) c.href = '?p=' + encodeURIComponent(e.slug);
     c.appendChild(cover(e));
+    var cv = c.querySelector('canvas'); if (cv) stirOn(c, cv);
     if (e.date && !e.soon) text.appendChild(el('span', 'when', e.date));
     text.appendChild(el('h2', '', e.title));
     var t = taste(e); if (t) text.appendChild(el('p', 'taste', t));
@@ -256,7 +279,11 @@ a.card:hover h2 { text-decoration: underline; text-decoration-thickness: 0.07em;
     if (e.date) head.appendChild(el('p', 'when', e.date));
     head.appendChild(el('h1', '', e.title));
     art.appendChild(head);
-    if (!e.cover) art.appendChild(cover(e, 'banner'));
+    if (!e.cover) {
+      var b = cover(e, 'banner'), bc = b.firstChild; stirOn(b, bc);
+      b.addEventListener('click', function () { stir(bc, true); setTimeout(function () { stir(bc, false); }, 1400); });   // a tap on a phone stirs it for a moment
+      art.appendChild(b);
+    }
     prose.appendChild(JournalDB.nodes(e.body));
     var kids = prose.children, k;                                // the drop cap goes on the first paragraph of words
     for (k = 0; k < kids.length; k++) {
