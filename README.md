@@ -17,6 +17,8 @@ Edit it in the browser here: https://github.com/troy-wu/troy-wu.github.io/edit/g
 
 While an entry is open, a row of dots along the top of the screen fills in as you scroll, to show how far through it you are.
 
+Point at one of the dot-pattern covers (or tap the banner over an open entry) and its pattern drifts slowly, like ripples on water.
+
 The note at the top of that file lists what you can use (pull quotes, section breaks, pictures, covers, "Soon:" placeholders, drafts). Pictures go in `journal/images/`. The text above the first title in that file is the note about me beside the list.
 
 ### In the editor
