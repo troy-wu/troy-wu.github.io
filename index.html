@@ -318,6 +318,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       </div>
       <div class="toys" id="toys-game" hidden>
         <button type="button" id="game-again" hidden>Play again</button>
+        <button type="button" id="game-sound" aria-pressed="false">Sound</button>
         <button type="button" id="game-stop">Stop</button>
       </div>
     </div>
@@ -1140,17 +1141,21 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     stepNet();
     var b = game.ball, now = performance.now();
     if (!b) return;
-    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; b.rim = false; }
+    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; b.rim = false; game.rang = false; game.knock = 0; }
     else if (game.phase === 'flight') {
       var tl = game.trail, end = tl[tl.length - 1];
+      if (b.touch || (b.rim && !game.rang)) {                     // a clank each time it comes back onto the rim or board
+        if (now - game.knock > 180) play('clank');
+        game.knock = now; game.rang = true;
+      }
       if (!end || Math.hypot(b.cx - end.x, b.cy - end.y) > 16) tl.push({ x: b.cx, y: b.cy });   // a dot every few steps of the flight
       if (b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1) {
-        game.made++; game.streak++; game.phase = 'done'; game.t = now; showHud(false, true);
+        game.made++; game.streak++; game.phase = 'done'; game.t = now; showHud(false, true); play('swish');
         game.trail.forEach(function (q) { q.made = true; });             // a make turns the dots into stars
         pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: b.rim ? 'In!' : 'Swish!' });   // nothing but net
         if (game.streak > 1) pops.push({ x: Math.min(hoop.x0 - 4, world.w - 44), y: hoop.y - 46, t: now, text: game.streak + ' in a row' });
       } else if ((b.down && b.sp < 500) || now - game.t > 4500) {   // a miss costs a life
-        game.lives--; game.streak = 0; game.phase = 'done'; game.t = now - 250; showHud(true, false);
+        game.lives--; game.streak = 0; game.phase = 'done'; game.t = now - 250; showHud(true, false); play('miss');
         pops.push({ x: Math.max(world.homeL + 24, Math.min(world.w - 24, b.cx)), y: b.cy - b.R - 12, t: now, text: 'Miss' });
       }
     } else if (game.phase === 'done' && now - game.t > (game.lives > 0 ? 750 : 1150)) {
@@ -1421,6 +1426,45 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
   ui['toy-play'].addEventListener('click', startGame);
   ui['game-again'].addEventListener('click', startGame);
   ui['game-stop'].addEventListener('click', stopGame);
+
+  // the Sound switch for the game, off until pressed: a clank off the rim, a swish through the net, a low buzz for a miss.
+  // made on the spot with Web Audio, no sound files; the choice is kept in the visitor's browser
+  var soundBtn = document.getElementById('game-sound'), soundOn = false, audio = null;
+  try { soundOn = localStorage.getItem('hoopsSound') === 'on'; } catch (err) {}
+  soundBtn.setAttribute('aria-pressed', String(soundOn));
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    soundBtn.setAttribute('aria-pressed', String(soundOn));
+    try { localStorage.setItem('hoopsSound', soundOn ? 'on' : 'off'); } catch (err) {}
+    if (soundOn) play('clank');                             // a sample, so you know it is on
+  });
+  function play(kind) {
+    if (!soundOn) return;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      var t = audio.currentTime, out = audio.createGain(), o, f, src, buf, d, i;
+      out.connect(audio.destination);
+      if (kind === 'swish') {                               // a breath of filtered noise
+        buf = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.35), audio.sampleRate); d = buf.getChannelData(0);
+        for (i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        src = audio.createBufferSource(); src.buffer = buf;
+        f = audio.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.8;
+        f.frequency.setValueAtTime(1800, t); f.frequency.exponentialRampToValueAtTime(5200, t + 0.3);
+        out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.22, t + 0.06); out.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+        src.connect(f); f.connect(out); src.start(t); src.stop(t + 0.35);
+      } else {                                              // two tones that ring off: a bright clank, or a low falling buzz
+        var clank = kind === 'clank', notes = clank ? [610, 1460] : [150], len = clank ? 0.22 : 0.32;
+        out.gain.setValueAtTime(clank ? 0.12 : 0.1, t); out.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        notes.forEach(function (hz) {
+          o = audio.createOscillator(); o.type = clank ? 'triangle' : 'square';
+          o.frequency.setValueAtTime(hz, t);
+          if (!clank) o.frequency.exponentialRampToValueAtTime(90, t + len);
+          o.connect(out); o.start(t); o.stop(t + len);
+        });
+      }
+    } catch (err) {}
+  }
 
   /* ---------- start ---------- */
   function resized() {
