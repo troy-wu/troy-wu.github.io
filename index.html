@@ -853,6 +853,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     for (var i = 0; i < bodies.length; i++) drawBody(bodies[i]);
     if (game) drawHoop();                          // rim and net go over the ball, so it drops into them
     if (puffs.length) drawPuffs();
+    if (naps.length) drawNaps();
     if (pops.length) {                             // short notes that rise and fade, like "In!"
       var now = performance.now(), k, age;
       ctx.font = '600 15px "Instrument Sans", "Helvetica Neue", Arial, sans-serif'; ctx.fillStyle = ink;
@@ -1173,7 +1174,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     if (n === 3) acc = 0;
     if (n) referee();
     draw();
-    if (n) still = (v < 2.5 && !world.held && !pops.length && !puffs.length && !(game && (net.busy > 0.6 || game.phase === 'flight' || game.phase === 'done'))) ? still + n : 0;
+    if (n) still = (v < 2.5 && !world.held && !pops.length && !puffs.length && !naps.length && !(game && (net.busy > 0.6 || game.phase === 'flight' || game.phase === 'done'))) ? still + n : 0;
     if (still > 45) { asleep = true; return; }
     raf = requestAnimationFrame(frame);
   }
@@ -1418,6 +1419,44 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     sim.centroid(b);
     for (k = 0; k < 2 * N; k++) { b.vx[k] += side + (k % 2 ? 40 : -40); b.vy[k] += up; }
     wake();
+  }
+
+  /* ---------- naps: leave the page alone for a while and the toys doze off, z's rising from one of them; stir and they wake with a start ---------- */
+  var NAP = 25000, naps = [], napTimer = 0, dozing = false;
+  function rest() { clearTimeout(napTimer); napTimer = setTimeout(doze, NAP); }
+  function doze() {
+    var awake = bodies.filter(function (b) { return b.entered && b !== world.held; }), b;
+    var letters = awake.filter(function (b) { return b.puffy; });   // a letter if there is one, as they have clear sky above them
+    if (letters.length) awake = letters;
+    rest();                                                  // and again later, while nobody is about
+    if (game || reduce || world.g <= 0 || document.hidden || !awake.length) return;
+    b = awake[Math.floor(Math.random() * awake.length)];
+    sim.centroid(b);
+    dozing = true;
+    naps.push({ x: b.cx + b.R * 0.3, y: Math.min.apply(null, b.y) - 8, t: performance.now() });   // just above its top
+    wake();
+  }
+  function stir() {
+    if (dozing && !game) bodies.forEach(function (b) { if (b.entered && b !== world.held) startle(b); });
+    dozing = false; naps = [];
+    rest();
+  }
+  ['pointerdown', 'pointermove', 'keydown'].forEach(function (type) { window.addEventListener(type, stir); });
+  window.addEventListener('scroll', stir, { passive: true });
+  rest();
+  // three z's, one after another, each a little bigger, drifting up and to the side
+  function drawNaps() {
+    var now = performance.now(), i, k, q, age;
+    naps = naps.filter(function (q) { return now - q.t < 3600; });
+    ctx.fillStyle = ink;
+    for (i = 0; i < naps.length; i++) for (k = 0; k < 3; k++) {
+      q = naps[i]; age = (now - q.t - k * 600) / 2400;
+      if (age < 0 || age > 1) continue;
+      ctx.font = FONT.replace('SIZE', 12 + 5 * k);
+      ctx.globalAlpha = Math.min(1, 4 * age, 3 * (1 - age));
+      ctx.fillText(k < 2 ? 'z' : 'Z', q.x + 14 * age + 4 * Math.sin(age * 7), q.y - 48 * age);
+    }
+    ctx.globalAlpha = 1;
   }
   document.getElementById('toy-reset').addEventListener('click', function () {
     world.g = 2600; floatBtn.setAttribute('aria-pressed', 'false'); floatBtn.textContent = 'Float';
