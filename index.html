@@ -615,7 +615,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       s = (1 - bt) * (1 - bt) + bt * bt;
       b.x[bj] += bx * m * (1 - bt) / s; b.y[bj] += by * m * (1 - bt) / s;
       b.x[bk] += bx * m * bt / s; b.y[bk] += by * m * bt / s;
-      b.touch = true; b.rim = true;                  // the game checks this for a swish
+      b.touch = true; b.rim = true; b.iron = true;   // the game checks these for a swish or a bank shot
     }
 
     function walls(b) {
@@ -625,7 +625,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
         if (y[i] > world.floor) { y[i] = world.floor; x[i] -= (x[i] - b.px[i]) * F_FLOOR; b.down = true; }
         if (b.entered && y[i] < 0) { y[i] = 0; x[i] -= (x[i] - b.px[i]) * F_WALL; }
         if (x[i] < 0) { x[i] = 0; y[i] -= (y[i] - b.py[i]) * F_WALL; }
-        if (x[i] > world.w) { x[i] = world.w; y[i] -= (y[i] - b.py[i]) * F_WALL; b.rim = true; }
+        if (x[i] > world.w) { x[i] = world.w; y[i] -= (y[i] - b.py[i]) * F_WALL; b.rim = true; b.glass = true; }
         if (y[i] < top) top = y[i];
       }
       if (top > 1) b.entered = true;
@@ -1142,7 +1142,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
     stepNet();
     var b = game.ball, now = performance.now();
     if (!b) return;
-    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; b.rim = false; game.rang = false; game.knock = 0; }
+    if (game.phase === 'aim' && b !== world.held && b.cx > hoop.line) { game.phase = 'flight'; game.t = now; b.rim = b.glass = b.iron = false; game.rang = false; game.knock = 0; }
     else if (game.phase === 'flight') {
       var tl = game.trail, end = tl[tl.length - 1];
       if (b.touch || (b.rim && !game.rang)) {                     // a clank each time it comes back onto the rim or board
@@ -1153,7 +1153,7 @@ html.grabbing, html.grabbing * { cursor: grabbing !important; user-select: none;
       if (b.lastY < hoop.y && b.cy >= hoop.y && b.cx > hoop.x0 + 2 && b.cx < hoop.x1) {
         game.made++; game.streak++; game.phase = 'done'; game.t = now; showHud(false, true); play('swish');
         game.trail.forEach(function (q) { q.made = true; });             // a make turns the dots into stars
-        pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: b.rim ? 'In!' : 'Swish!' });   // nothing but net
+        pops.push({ x: hoop.x0 - 4, y: hoop.y - 24, t: now, text: !b.rim ? 'Swish!' : b.glass && !b.iron ? 'Bank shot!' : 'In!' });   // nothing but net, or off the backboard alone
         if (game.streak > 1) pops.push({ x: Math.min(hoop.x0 - 4, world.w - 44), y: hoop.y - 46, t: now, text: game.streak + ' in a row' });
       } else if ((b.down && b.sp < 500) || now - game.t > 4500) {   // a miss costs a life
         game.lives--; game.streak = 0; game.phase = 'done'; game.t = now - 250; showHud(true, false); play('miss');
